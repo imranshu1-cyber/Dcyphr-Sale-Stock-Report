@@ -43,6 +43,12 @@ st.markdown("""
 }
 p { color:#1a0030 !important; font-size:.9rem !important; }
 label { color:#3d0066 !important; font-weight:600 !important; }
+[data-testid="stWidgetLabel"] p { color:#6a1b9a !important; font-weight:700 !important; font-size:.85rem !important; }
+.stSelectbox > div > div { background:#ffffff !important; border:1.5px solid #c084fc !important; border-radius:10px !important; color:#1a0030 !important; }
+[data-baseweb="select"] > div { background:#ffffff !important; border:1.5px solid #c084fc !important; border-radius:10px !important; }
+[data-baseweb="popover"] { background:#fff !important; border:1px solid #c084fc !important; }
+[data-baseweb="popover"] * { color:#1a0030 !important; background:#fff !important; }
+.stMultiSelect > div > div { background:#ffffff !important; border:1.5px solid #c084fc !important; border-radius:10px !important; }
 .stButton > button {
     background: linear-gradient(135deg,#6a1b9a,#9c27b0) !important;
     color:#ffffff !important; border:none !important; border-radius:12px !important;
