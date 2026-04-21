@@ -252,12 +252,13 @@ avg_disc   = (df['Discount Amount'].sum() / total_mrp * 100) if total_mrp > 0 el
 top_ch     = df.groupby('Distributor')['NetSale'].sum().idxmax()
 top_st     = df.groupby('Store Name')['NetSale'].sum().idxmax()
 
-k1,k2,k3,k4,k5 = st.columns(5)
-kpi(k1, "Total Net Sale",   f"₹{fmt_inr(int(total_sale))}", f"Mar'25–Mar'26 · {df['Month'].nunique()} Months", "💰")
-kpi(k2, "Total Qty Sold",   f"{total_qty:,} Pcs",            "All channels combined", "📦")
-kpi(k3, "Avg Discount",     f"{avg_disc:.1f}%",              "On MRP value", "🏷️")
-kpi(k4, "Top Channel",      top_ch[:20],                     f"₹{fmt_inr(int(df.groupby('Distributor')['NetSale'].sum().max()))}", "🏆")
-kpi(k5, "Top Store",        top_st[:20],                     f"₹{fmt_inr(int(df.groupby('Store Name')['NetSale'].sum().max()))}", "⭐")
+k1,k2,k3,k4,k5,k6 = st.columns(6)
+kpi(k1, "Total Net Sale",   f"₹{fmt_inr(int(total_sale))}", f"Mar'25–Mar'26", "💰")
+kpi(k2, "Total Qty Sold",   f"{total_qty:,} Pcs",           "All channels", "📦")
+kpi(k3, "Avg Discount",     f"{avg_disc:.1f}%",             "On MRP value", "🏷️")
+kpi(k4, "Total Channels",   str(df['Distributor'].nunique()), "Active distributors", "🔗")
+kpi(k5, "Top Channel",      top_ch.split()[0]+" "+top_ch.split()[1] if len(top_ch.split())>1 else top_ch[:15], f"₹{fmt_inr(int(df.groupby('Distributor')['NetSale'].sum().max()))}", "🏆")
+kpi(k6, "Top Store",        top_st[:18],                    f"₹{fmt_inr(int(df.groupby('Store Name')['NetSale'].sum().max()))}", "⭐")
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ══ TABS ══
@@ -268,8 +269,6 @@ t1,t2,t3,t4,t5 = st.tabs([
 
 # ══ TAB 1: OVERVIEW ══
 with t1:
-    summary_box(df, "EXECUTIVE SUMMARY — Mar'25 to Mar'26")
-
     sec("📈 Monthly Net Sale Trend")
     monthly = df.groupby('Month')['NetSale'].sum().reindex(MONTHS_ORDER).fillna(0)
     bi = int(monthly.values.argmax()); wi = int(monthly.values.argmin())
