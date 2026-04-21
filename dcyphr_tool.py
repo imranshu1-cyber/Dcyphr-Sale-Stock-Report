@@ -372,34 +372,6 @@ with t2:
 
 # ══ TAB 3: STORE-WISE ══
 with t3:
-    sec("🏪 Store-wise Sale")
-    top10_st = df.groupby('Store Name')['NetSale'].sum().nlargest(10).sort_values()
-    fig_st = go.Figure(go.Bar(
-        x=top10_st.values, y=[s[:30] for s in top10_st.index.tolist()], orientation='h',
-        marker=dict(color=top10_st.values, colorscale=BLUE_SEQ, line=dict(width=0)),
-        text=[f"₹{fmt_inr(int(v))}" for v in top10_st.values],
-        textposition='outside', textfont=dict(size=10,color='#1a0030')))
-    fig_st.update_layout(**cl(420,"Top 10 Stores by Net Sale",margin=dict(l=10,r=180,t=55,b=40)),
-        xaxis_range=[0,top10_st.max()*1.45])
-    st.plotly_chart(fig_st, use_container_width=True)
-
-    sec("📋 Store Summary Table")
-    st_tbl = df.groupby(['Distributor','Store Name']).agg(
-        Total_Sale=('NetSale','sum'),
-        Total_Qty=('Sale Qty','sum'),
-        MRP_Value=('MRP Value','sum'),
-        Discount=('Discount Amount','sum'),
-    ).reset_index()
-    st_tbl['Avg Disc%']  = (st_tbl['Discount']/st_tbl['MRP_Value']*100).round(1)
-    st_tbl['Sale Cont%'] = (st_tbl['Total_Sale']/st_tbl['Total_Sale'].sum()*100).round(2)
-    st_tbl = st_tbl.sort_values('Total_Sale',ascending=False)
-    st_tbl['Total_Sale'] = st_tbl['Total_Sale'].apply(lambda x: f"₹{fmt_inr(int(x))}")
-    st_tbl['MRP_Value']  = st_tbl['MRP_Value'].apply(lambda x: f"₹{fmt_inr(int(x))}")
-    st_tbl['Total_Qty']  = st_tbl['Total_Qty'].apply(int)
-    st_tbl = st_tbl.drop(columns=['Discount'])
-    st_tbl.columns = ['Channel','Store','Net Sale','Total Qty','MRP Value','Avg Disc%','Sale Cont%']
-    st.dataframe(st_tbl, use_container_width=True, hide_index=True)
-
     sec("🔍 Store Deep Dive")
     stores = sorted(df['Store Name'].dropna().unique().tolist())
     sel_store = st.selectbox("Select Store", stores, key="st_dd")
@@ -408,7 +380,6 @@ with t3:
         ts = ss['NetSale'].sum(); tq = int(ss['Sale Qty'].sum())
         rank = int(df.groupby('Store Name')['NetSale'].sum().rank(ascending=False)[sel_store])
         cont = ts/total_sale if total_sale>0 else 0
-        disc = (ss['Discount Amount'].sum()/ss['MRP Value'].sum()*100) if ss['MRP Value'].sum()>0 else 0
 
         m1,m2,m3,m4 = st.columns(4)
         kpi(m1,"Net Sale",    f"₹{fmt_inr(int(ts))}", "Mar'25–Mar'26","💰")
@@ -437,6 +408,35 @@ with t3:
                     insidetextfont=dict(size=10,color='#fff')))
                 fig_dp.update_layout(**cl(280,"Category Mix",margin=dict(l=10,r=10,t=50,b=10)))
                 st.plotly_chart(fig_dp, use_container_width=True)
+
+    st.markdown("---")
+    sec("🏪 Top 10 Stores by Net Sale")
+    top10_st = df.groupby('Store Name')['NetSale'].sum().nlargest(10).sort_values()
+    fig_st = go.Figure(go.Bar(
+        x=top10_st.values, y=[s[:30] for s in top10_st.index.tolist()], orientation='h',
+        marker=dict(color=top10_st.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+        text=[f"₹{fmt_inr(int(v))}" for v in top10_st.values],
+        textposition='outside', textfont=dict(size=10,color='#1a0030')))
+    fig_st.update_layout(**cl(420,"Top 10 Stores by Net Sale",margin=dict(l=10,r=180,t=55,b=40)),
+        xaxis_range=[0,top10_st.max()*1.45])
+    st.plotly_chart(fig_st, use_container_width=True)
+
+    sec("📋 Store Summary Table")
+    st_tbl = df.groupby(['Distributor','Store Name']).agg(
+        Total_Sale=('NetSale','sum'),
+        Total_Qty=('Sale Qty','sum'),
+        MRP_Value=('MRP Value','sum'),
+        Discount=('Discount Amount','sum'),
+    ).reset_index()
+    st_tbl['Avg Disc%']  = (st_tbl['Discount']/st_tbl['MRP_Value']*100).round(1)
+    st_tbl['Sale Cont%'] = (st_tbl['Total_Sale']/st_tbl['Total_Sale'].sum()*100).round(2)
+    st_tbl = st_tbl.sort_values('Total_Sale',ascending=False)
+    st_tbl['Total_Sale'] = st_tbl['Total_Sale'].apply(lambda x: f"₹{fmt_inr(int(x))}")
+    st_tbl['MRP_Value']  = st_tbl['MRP_Value'].apply(lambda x: f"₹{fmt_inr(int(x))}")
+    st_tbl['Total_Qty']  = st_tbl['Total_Qty'].apply(int)
+    st_tbl = st_tbl.drop(columns=['Discount'])
+    st_tbl.columns = ['Channel','Store','Net Sale','Total Qty','MRP Value','Avg Disc%','Sale Cont%']
+    st.dataframe(st_tbl, use_container_width=True, hide_index=True)
 
 # ══ TAB 4: CATEGORY & GENDER ══
 with t4:
