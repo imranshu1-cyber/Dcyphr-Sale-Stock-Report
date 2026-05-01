@@ -531,13 +531,15 @@ with t5:
     if len(top_arts) > 0:
         fig_art = go.Figure(go.Bar(
             x=top_arts.values,
-            y=[f"{idx[1][:30]}" for idx in top_arts.index],
+            y=[f"{idx[1][:35]}" for idx in top_arts.index],
             orientation='h',
-            marker=dict(color=top_arts.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+            marker=dict(color='#7b1fa2', line=dict(width=0)),
             text=[f"₹{fmt_inr(int(v))}" for v in top_arts.values],
-            textposition='outside', textfont=dict(size=10,color='#1a0030')))
-        fig_art.update_layout(**cl(500,"Top 20 Articles by Net Sale",margin=dict(l=10,r=180,t=55,b=40)),
-            xaxis_range=[0,top_arts.max()*1.45])
+            textposition='outside',
+            textfont=dict(size=12, color='#1a0030')))
+        fig_art.update_layout(**cl(360,"Top 10 Articles — Net Sale",margin=dict(l=10,r=150,t=55,b=40)),
+            xaxis_range=[0, top_arts.max()*1.55],
+            yaxis=dict(tickfont=dict(size=11,color='#1a0030'),showgrid=False))
         st.plotly_chart(fig_art, use_container_width=True)
 
     # Article monthly trend — select specific article
