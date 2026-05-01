@@ -535,12 +535,10 @@ with t5:
             orientation='h',
             marker=dict(color='#7b1fa2', line=dict(width=0)),
             text=[f"₹{fmt_inr(int(v))}" for v in top_arts.values],
-            textposition='auto',
-            textfont=dict(size=11, color='#ffffff'),
-            insidetextanchor='middle'))
-        fig_art.update_layout(**cl(420,"Top 10 Articles — Net Sale",margin=dict(l=10,r=130,t=55,b=40)))
-        fig_art.update_xaxes(range=[0, top_arts.max()*1.6])
-        fig_art.update_yaxes(tickfont=dict(size=11,color='#1a0030'),showgrid=False,autorange='reversed')
+            textposition='outside',
+            textfont=dict(size=11, color='#1a0030')))
+        fig_art.update_layout(**cl(400,"Top 10 Articles — Net Sale",margin=dict(l=10,r=130,t=55,b=40)))
+        fig_art.update_xaxes(range=[0, top_arts.max()*1.7])
         st.plotly_chart(fig_art, use_container_width=True)
 
     # Article monthly trend — select specific article
