@@ -525,9 +525,9 @@ with t5:
     if a_search: adf = adf[adf['Item Name'].str.contains(a_search, case=False, na=False)]
 
     # Top 20 articles by sale
-    top_arts = adf.groupby(['Item ID','Item Name'])['NetSale'].sum().sort_values(ascending=False).head(20)
+    top_arts = adf.groupby(['Item ID','Item Name'])['NetSale'].sum().sort_values(ascending=False).head(10)
 
-    sec("🏆 Top 20 Articles by Net Sale")
+    sec("🏆 Top 10 Articles by Net Sale")
     if len(top_arts) > 0:
         fig_art = go.Figure(go.Bar(
             x=top_arts.values,
