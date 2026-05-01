@@ -529,18 +529,17 @@ with t5:
 
     sec("🏆 Top 10 Articles by Net Sale")
     if len(top_arts) > 0:
-        colors_art = ['#3a0068','#4a1080','#5a1a90','#6a1b9a','#7a2aaa','#8a3aba','#9c27b0','#b040c0','#c050d0','#ce93d8']
         fig_art = go.Figure(go.Bar(
             x=top_arts.values,
             y=[f"{idx[1][:35]}" for idx in top_arts.index],
             orientation='h',
-            marker=dict(color=colors_art[:len(top_arts)], line=dict(width=0)),
+            marker=dict(color='#7b1fa2', line=dict(width=0)),
             text=[f"₹{fmt_inr(int(v))}" for v in top_arts.values],
             textposition='outside',
             textfont=dict(size=11, color='#1a0030')))
-        fig_art.update_layout(**cl(500,"Top 10 Articles by Net Sale",margin=dict(l=10,r=160,t=55,b=40)),
+        fig_art.update_layout(**cl(550,"Top 10 Articles by Net Sale",margin=dict(l=10,r=160,t=55,b=40)),
             xaxis_range=[0, top_arts.max()*1.6],
-            bargap=0.35)
+            bargap=0.5)
         st.plotly_chart(fig_art, use_container_width=True)
 
     # Article monthly trend — select specific article
