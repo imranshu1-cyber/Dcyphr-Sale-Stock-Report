@@ -944,7 +944,8 @@ with t10:
         for ri,row in enumerate(st_data.itertuples(),2):
             disc_pct = round(row.Disc/row.MRP*100,1) if row.MRP>0 else 0
             cont_pct = round(row.NetSale/total_sale*100,2) if total_sale>0 else 0
-            vals = [row.Distributor, row._3, int(row.NetSale), int(row.Qty), f"{disc_pct}%", f"{cont_pct}%"]
+            store_name = getattr(row, 'Store_Name', getattr(row, '_3', ''))
+            vals = [row.Distributor, store_name, int(row.NetSale), int(row.Qty), f"{disc_pct}%", f"{cont_pct}%"]
             bg = "f5f3ff" if ri%2==0 else "FFFFFF"
             for ci,v in enumerate(vals,1): style_cell(ws2,ri,ci,v,bg)
         for ci,w in enumerate([28,28,15,12,10,10],1):
