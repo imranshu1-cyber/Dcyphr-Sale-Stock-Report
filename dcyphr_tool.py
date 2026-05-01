@@ -538,14 +538,14 @@ with t5:
             marker=dict(color='#7b1fa2', line=dict(width=0)),
             text=texts, textposition='outside',
             textfont=dict(size=11, color='#1a0030'),
-            width=0.7))
+            width=0.5))
         max_val = max(vals) if vals else 1
         fig_art.update_layout(
             paper_bgcolor="rgba(255,255,255,1)",
             plot_bgcolor="rgba(245,240,255,0.5)",
             font=dict(color="#1a0030", family="Inter", size=12),
             margin=dict(l=10, r=180, t=55, b=20),
-            height=50 + len(vals)*55,
+            height=420,
             title=dict(text="<b>Top 10 Articles by Net Sale</b>",
                 font=dict(color="#1a0030", size=14, family="Plus Jakarta Sans")),
             xaxis=dict(range=[0, max_val*1.65], gridcolor="#ede9fe",
