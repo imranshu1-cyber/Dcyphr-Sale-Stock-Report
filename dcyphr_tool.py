@@ -529,8 +529,10 @@ with t5:
 
     sec("🏆 Top 10 Articles by Net Sale")
     if len(top_arts) > 0:
-        vals = list(top_arts.values)
-        labs = [idx[1][:35] for idx in top_arts.index]
+        # Sort ascending so best bar is at top
+        top_arts_sorted = top_arts.sort_values(ascending=True)
+        vals = list(top_arts_sorted.values)
+        labs = [idx[1][:35] for idx in top_arts_sorted.index]
         texts = [f"₹{fmt_inr(int(v))}" for v in vals]
         fig_art = go.Figure()
         fig_art.add_trace(go.Bar(
@@ -551,7 +553,7 @@ with t5:
             xaxis=dict(range=[0, max_val*1.65], gridcolor="#ede9fe",
                 tickfont=dict(color="#1a0030", size=11), showgrid=True),
             yaxis=dict(gridcolor="#ede9fe", tickfont=dict(color="#1a0030", size=11),
-                showgrid=False, autorange="reversed"),
+                showgrid=False),
             showlegend=False)
         st.plotly_chart(fig_art, use_container_width=True)
 
