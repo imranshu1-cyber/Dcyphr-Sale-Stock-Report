@@ -513,9 +513,9 @@ with t5:
     # Filters
     af1,af2,af3 = st.columns(3)
     with af1:
-        a_ch = st.selectbox("Channel", ["All"] + sorted(df['Distributor'].unique()), key="art_ch")
+        a_ch = st.selectbox("Channel", ["All"] + sorted(df['Distributor'].dropna().unique()), key="art_ch")
     with af2:
-        a_cat = st.selectbox("Category", ["All"] + sorted(df['Category'].unique()), key="art_cat")
+        a_cat = st.selectbox("Category", ["All"] + sorted(df['Category'].dropna().unique()), key="art_cat")
     with af3:
         a_search = st.text_input("🔍 Search Item Name", placeholder="e.g. Trackpants, Tee...", key="art_search")
 
@@ -583,8 +583,8 @@ with t6:
     sec("🎨 Item + Colour-wise Sale")
 
     cf1,cf2,cf3 = st.columns(3)
-    with cf1: c_ch  = st.selectbox("Channel", ["All"]+sorted(df['Distributor'].unique()), key="col_ch")
-    with cf2: c_cat = st.selectbox("Category", ["All"]+sorted(df['Category'].unique()), key="col_cat")
+    with cf1: c_ch  = st.selectbox("Channel", ["All"]+sorted(df['Distributor'].dropna().unique()), key="col_ch")
+    with cf2: c_cat = st.selectbox("Category", ["All"]+sorted(df['Category'].dropna().unique()), key="col_cat")
     with cf3: c_search = st.text_input("🔍 Search Item", placeholder="Item name...", key="col_search")
 
     cdf = df.copy()
@@ -644,9 +644,9 @@ with t7:
     sec("📐 Size-wise Sale Analysis")
 
     sf1,sf2,sf3 = st.columns(3)
-    with sf1: s_ch  = st.selectbox("Channel", ["All"]+sorted(df['Distributor'].unique()), key="sz_ch")
+    with sf1: s_ch  = st.selectbox("Channel", ["All"]+sorted(df['Distributor'].dropna().unique()), key="sz_ch")
     with sf2: s_gen = st.selectbox("Gender", ["All"]+sorted(df['Gender'].dropna().unique()), key="sz_gen")
-    with sf3: s_cat = st.selectbox("Category", ["All"]+sorted(df['Category'].unique()), key="sz_cat")
+    with sf3: s_cat = st.selectbox("Category", ["All"]+sorted(df['Category'].dropna().unique()), key="sz_cat")
 
     sdf = df.copy()
     if s_ch  != "All": sdf = sdf[sdf['Distributor']==s_ch]
@@ -726,7 +726,7 @@ with t8:
     sec("👤 Gender + Category + Sub Category Analysis")
 
     gf1,gf2 = st.columns(2)
-    with gf1: g_ch  = st.selectbox("Channel", ["All"]+sorted(df['Distributor'].unique()), key="gc_ch")
+    with gf1: g_ch  = st.selectbox("Channel", ["All"]+sorted(df['Distributor'].dropna().unique()), key="gc_ch")
     with gf2: g_gen = st.selectbox("Gender", ["All"]+sorted(df['Gender'].dropna().unique()), key="gc_gen")
 
     gdf = df.copy()
@@ -815,7 +815,7 @@ with t9:
 
     seasons = sorted(df['Season'].dropna().unique().tolist())
     seaf1,seaf2 = st.columns(2)
-    with seaf1: sea_ch = st.selectbox("Channel", ["All"]+sorted(df['Distributor'].unique()), key="sea_ch")
+    with seaf1: sea_ch = st.selectbox("Channel", ["All"]+sorted(df['Distributor'].dropna().unique()), key="sea_ch")
     with seaf2: sea_sel = st.multiselect("Season", seasons, default=seasons, key="sea_sel")
 
     seadf = df.copy()
