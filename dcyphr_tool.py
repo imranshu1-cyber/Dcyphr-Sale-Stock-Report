@@ -533,11 +533,11 @@ with t5:
             x=top_arts.values,
             y=[f"{idx[1][:35]}" for idx in top_arts.index],
             orientation='h',
-            marker=dict(color='#7b1fa2', line=dict(width=0)),
+            marker=dict(color=top_arts.values, colorscale=BLUE_SEQ, line=dict(width=0)),
             text=[f"₹{fmt_inr(int(v))}" for v in top_arts.values],
             textposition='outside',
             textfont=dict(size=11, color='#1a0030')))
-        fig_art.update_layout(**cl(400,"Top 10 Articles — Net Sale",margin=dict(l=10,r=130,t=55,b=40)))
+        fig_art.update_layout(**cl(450,"Top 10 Articles — Net Sale",margin=dict(l=10,r=150,t=55,b=40)))
         fig_art.update_xaxes(range=[0, top_arts.max()*1.7])
         st.plotly_chart(fig_art, use_container_width=True)
 
