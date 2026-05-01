@@ -529,31 +529,29 @@ with t5:
 
     sec("🏆 Top 10 Articles by Net Sale")
     if len(top_arts) > 0:
-        # Sort ascending so best bar is at top
         top_arts_sorted = top_arts.sort_values(ascending=True)
+        # Use Item ID last 6 chars to make unique labels
         vals = list(top_arts_sorted.values)
-        labs = [idx[1][:35] for idx in top_arts_sorted.index]
+        labs = [f"{idx[1][:22]}..{idx[0][-6:]}" for idx in top_arts_sorted.index]
         texts = [f"₹{fmt_inr(int(v))}" for v in vals]
-        fig_art = go.Figure()
-        fig_art.add_trace(go.Bar(
-            x=vals, y=labs, orientation='h',
-            marker=dict(color='#7b1fa2', line=dict(width=0)),
-            text=texts, textposition='outside',
-            textfont=dict(size=11, color='#1a0030'),
-            width=0.5))
         max_val = max(vals) if vals else 1
+        fig_art = go.Figure(go.Bar(
+            x=vals, y=labs, orientation='h',
+            marker=dict(color=vals, colorscale=BLUE_SEQ, line=dict(width=0)),
+            text=texts, textposition='outside',
+            textfont=dict(size=11, color='#1a0030')))
         fig_art.update_layout(
             paper_bgcolor="rgba(255,255,255,1)",
             plot_bgcolor="rgba(245,240,255,0.5)",
             font=dict(color="#1a0030", family="Inter", size=12),
-            margin=dict(l=10, r=180, t=55, b=20),
-            height=420,
+            margin=dict(l=10, r=160, t=55, b=20),
+            height=520,
             title=dict(text="<b>Top 10 Articles by Net Sale</b>",
                 font=dict(color="#1a0030", size=14, family="Plus Jakarta Sans")),
-            xaxis=dict(range=[0, max_val*1.65], gridcolor="#ede9fe",
+            xaxis=dict(range=[0, max_val*1.7], gridcolor="#ede9fe",
                 tickfont=dict(color="#1a0030", size=11), showgrid=True),
             yaxis=dict(gridcolor="#ede9fe", tickfont=dict(color="#1a0030", size=11),
-                showgrid=False),
+                showgrid=False, autorange='reversed'),
             showlegend=False)
         st.plotly_chart(fig_art, use_container_width=True)
 
