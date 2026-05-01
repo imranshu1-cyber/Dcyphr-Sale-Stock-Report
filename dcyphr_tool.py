@@ -537,8 +537,8 @@ with t5:
             text=[f"₹{fmt_inr(int(v))}" for v in top_arts.values],
             textposition='outside',
             textfont=dict(size=11, color='#1a0030')))
-        fig_art.update_layout(**cl(450,"Top 10 Articles — Net Sale",margin=dict(l=10,r=150,t=55,b=40)))
-        fig_art.update_xaxes(range=[0, top_arts.max()*1.7])
+        fig_art.update_layout(**cl(420,"Top 10 Articles by Net Sale",margin=dict(l=10,r=160,t=55,b=40)),
+            xaxis_range=[0, top_arts.max()*1.55])
         st.plotly_chart(fig_art, use_container_width=True)
 
     # Article monthly trend — select specific article
