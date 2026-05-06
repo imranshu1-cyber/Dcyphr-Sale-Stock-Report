@@ -275,6 +275,9 @@ def process_store(file_bytes):
     wh = pd.read_excel(file_bytes, sheet_name=wh_sheet, header=0)
     wh.columns = [str(c).strip() for c in wh.columns]
     # Season Sub Group is the correct season column
+    # Rename Season col first to avoid conflict with Season Sub Group
+    if 'Season' in wh.columns and 'Season Sub Group' in wh.columns:
+        wh = wh.rename(columns={'Season': 'SeasonDesc'})
     wh = wh.rename(columns={
         'LOCATION NAME': 'Location', 'STORE CODE': 'StoreCode',
         'ITEM NO/ARTICLE CODE': 'ItemID', 'ITEM NAME': 'ItemName',
@@ -290,13 +293,13 @@ def process_store(file_bytes):
     for col in ['MRP','ClosingQty','ClosingValueMRP','ClosingValueCost']:
         if col in wh.columns:
             wh[col] = pd.to_numeric(wh[col], errors='coerce').fillna(0)
-    wh['Color']    = wh['Color'].astype(str).str.upper().str.strip()
-    wh['Size']     = wh['Size'].astype(str).str.upper().str.strip()
-    wh['Gender']   = wh['Gender'].astype(str).str.upper().str.strip()
-    wh['Season']   = wh['Season'].astype(str).str.strip()
-    wh['Category'] = wh['Category'].astype(str).str.upper().str.strip()
-    wh['ItemName'] = wh['ItemName'].astype(str).str.strip()
-    wh['GodownName'] = wh['GodownName'].astype(str).str.strip()
+    wh['Color']    = wh['Color'].astype(str).str.upper().str.strip() if 'Color' in wh.columns else 'N/A'
+    wh['Size']     = wh['Size'].astype(str).str.upper().str.strip() if 'Size' in wh.columns else 'N/A'
+    wh['Gender']   = wh['Gender'].astype(str).str.upper().str.strip() if 'Gender' in wh.columns else 'N/A'
+    wh['Season']   = wh['Season'].astype(str).str.strip() if 'Season' in wh.columns else 'N/A'
+    wh['Category'] = wh['Category'].astype(str).str.upper().str.strip() if 'Category' in wh.columns else 'N/A'
+    wh['ItemName'] = wh['ItemName'].astype(str).str.strip() if 'ItemName' in wh.columns else 'N/A'
+    wh['GodownName'] = wh['GodownName'].astype(str).str.strip() if 'GodownName' in wh.columns else 'N/A'
 
     return sale, stock, wh, present_months
 
