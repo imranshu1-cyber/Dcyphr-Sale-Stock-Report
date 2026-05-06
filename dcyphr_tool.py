@@ -264,7 +264,15 @@ def process_store(file_bytes):
     present_months = [m for m in STORE_MONTH_ORDER if m in sale['Month'].unique()]
 
     # Sheet3 - Warehouse stock
-    wh = pd.read_excel(file_bytes, sheet_name='Sheet2', header=0)
+    # Try both possible sheet names
+    xl_tmp = pd.ExcelFile(file_bytes)
+    wh_sheet = 'Sheet2'
+    for sname in xl_tmp.sheet_names:
+        if 'warehouse' in sname.lower() or 'inventory' in sname.lower() or sname == 'Sheet2':
+            wh_sheet = sname
+            break
+    file_bytes.seek(0)
+    wh = pd.read_excel(file_bytes, sheet_name=wh_sheet, header=0)
     wh.columns = [str(c).strip() for c in wh.columns]
     # Season Sub Group is the correct season column
     wh = wh.rename(columns={
