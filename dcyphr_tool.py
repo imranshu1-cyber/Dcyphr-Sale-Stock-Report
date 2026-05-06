@@ -205,8 +205,96 @@ def process(file_bytes):
     month_short  = [get_month_short(m) for m in months_order]
     return df, months_order, month_short
 
+
+@st.cache_data(show_spinner=False)
+def process_store(file_bytes):
+    sale  = pd.read_excel(file_bytes, sheet_name='BILL WISE SALE REPORT APRIL2025', header=0)
+    stock = pd.read_excel(file_bytes, sheet_name='DCYPHR STORE STOCK REPORT', header=0)
+
+    sale.columns  = [str(c).strip() for c in sale.columns]
+    stock.columns = [str(c).strip() for c in stock.columns]
+
+    sale = sale.rename(columns={
+        'Store Name': 'StoreName', 'STORE CODE': 'StoreCode',
+        'Item No/Article Code': 'ItemID', 'Item Name': 'ItemName',
+        'Divison  Desc': 'Division', 'Category Desc': 'Category',
+        'Sub Category Code': 'SubCategory', 'Sub Category2 Code.': 'FitType',
+        'GENDER.': 'Gender', 'Season sub Group': 'Season', 'Brand.': 'Brand',
+        'NET_SALE_TAX _INCL': 'NetSale', 'MRP VALUE': 'MRPValue',
+        'DISCOUNT AMOUNT': 'DiscAmt', 'TOTAL QTY': 'SaleQty',
+        'Column1': 'Month', 'Color': 'Color', 'Size': 'Size',
+    })
+    stock = stock.rename(columns={
+        'Store Name': 'StoreName', 'STORE CODE': 'StoreCode',
+        'Item ID': 'ItemID', 'Item Name': 'ItemName',
+        'Divison  Desc': 'Division', 'Category Desc': 'Category',
+        'Sub Category Code': 'SubCategory', 'Sub Category2 Code.': 'FitType',
+        'GENDER.': 'Gender', 'Season sub Group': 'Season', 'Brand.': 'Brand',
+        'MRP Value': 'MRPValue', 'Discount Amount': 'DiscAmt',
+        'Closing Qty': 'ClosingQty', 'Clsoing Value': 'ClosingValue',
+        'Color': 'Color', 'Size': 'Size',
+    })
+
+    for col in ['NetSale','MRPValue','DiscAmt','SaleQty']:
+        if col in sale.columns:
+            sale[col] = pd.to_numeric(sale[col], errors='coerce').fillna(0)
+    for col in ['MRPValue','DiscAmt','ClosingQty','ClosingValue']:
+        if col in stock.columns:
+            stock[col] = pd.to_numeric(stock[col], errors='coerce').fillna(0)
+
+    sale['StoreName'] = sale['StoreName'].astype(str).str.strip()
+    sale['Gender']    = sale['Gender'].astype(str).str.upper().str.strip()
+    sale['Category']  = sale['Category'].astype(str).str.upper().str.strip()
+    sale['Season']    = sale['Season'].astype(str).str.strip()
+    sale['Color']     = sale['Color'].astype(str).str.upper().str.strip()
+    sale['Size']      = sale['Size'].astype(str).str.upper().str.strip()
+    sale['Month']     = sale['Month'].astype(str).str.strip()
+    sale['ItemName']  = sale['ItemName'].astype(str).str.strip() if 'ItemName' in sale.columns else sale['ItemID']
+    sale['SubCategory'] = sale['SubCategory'].astype(str).str.strip() if 'SubCategory' in sale.columns else 'N/A'
+    sale['FitType']   = sale['FitType'].astype(str).str.strip() if 'FitType' in sale.columns else 'N/A'
+
+    stock['StoreName'] = stock['StoreName'].astype(str).str.strip()
+    stock['Gender']    = stock['Gender'].astype(str).str.upper().str.strip()
+    stock['Category']  = stock['Category'].astype(str).str.upper().str.strip()
+    stock['Season']    = stock['Season'].astype(str).str.strip()
+    stock['Color']     = stock['Color'].astype(str).str.upper().str.strip()
+    stock['Size']      = stock['Size'].astype(str).str.upper().str.strip()
+
+    STORE_MONTH_ORDER = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar']
+    present_months = [m for m in STORE_MONTH_ORDER if m in sale['Month'].unique()]
+
+    # Sheet3 - Warehouse stock
+    try:
+        wh = pd.read_excel(file_bytes, sheet_name='Sheet2', header=0)
+        wh.columns = [str(c).strip() for c in wh.columns]
+        wh = wh.rename(columns={
+            'LOCATION NAME': 'Location', 'STORE CODE': 'StoreCode',
+            'ITEM NO/ARTICLE CODE': 'ItemID', 'ITEM NAME': 'ItemName',
+            'COLOR': 'Color', 'SIZE': 'Size',
+            'Divison  Desc': 'Division', 'Category Desc': 'Category',
+            'Sub Category Desc': 'SubCategory', 'Sub Category2 Code.': 'FitType',
+            'Gender': 'Gender', 'Season Sub Group': 'Season', 'Brand': 'Brand',
+            'MRP/UNIT': 'MRP', 'CLOSING STOCK QTY': 'ClosingQty',
+            'CLOSING VALUE(MRP)': 'ClosingValueMRP',
+            'CLOSING VALUE( COST PRICE WITHOUT TAX)': 'ClosingValueCost',
+            'GODOWN NAME': 'GodownName',
+        })
+        for col in ['MRP','ClosingQty','ClosingValueMRP','ClosingValueCost']:
+            if col in wh.columns:
+                wh[col] = pd.to_numeric(wh[col], errors='coerce').fillna(0)
+        wh['Color']  = wh['Color'].astype(str).str.upper().str.strip()
+        wh['Size']   = wh['Size'].astype(str).str.upper().str.strip()
+        wh['Gender'] = wh['Gender'].astype(str).str.upper().str.strip()
+        wh['Season'] = wh['Season'].astype(str).str.strip()
+        wh['Category'] = wh['Category'].astype(str).str.upper().str.strip()
+        wh['ItemName'] = wh['ItemName'].astype(str).str.strip()
+    except:
+        wh = pd.DataFrame()
+
+    return sale, stock, wh, present_months
+
 # ══ SESSION ══
-for k,v in {"ready":False,"data":None,"mode":None}.items():
+for k,v in {"ready":False,"data":None,"mode":None,"store_data":None}.items():
     if k not in st.session_state: st.session_state[k] = v
 
 # ══ HERO ══
@@ -243,6 +331,7 @@ with b2:
         st.session_state.mode = "store"
         st.session_state.ready = False
         st.session_state.data = None
+        st.session_state.store_data = None
 
 if st.session_state.mode:
     mode_label = "Channel Sale & Stock Report" if st.session_state.mode == "channel" else "Store Sale & Stock Report"
@@ -258,7 +347,10 @@ if st.session_state.mode:
             if st.button("⚡  Generate Analysis", use_container_width=True):
                 with st.spinner("Processing..."):
                     file_bytes = BytesIO(uploaded.read())
-                    st.session_state.data  = process(file_bytes)
+                    if st.session_state.mode == "channel":
+                        st.session_state.data  = process(file_bytes)
+                    else:
+                        st.session_state.store_data = process_store(file_bytes)
                     st.session_state.ready = True
                 st.success("✅ Done! Analysis Ready.")
 
@@ -272,6 +364,486 @@ if not st.session_state.ready:
     </div>""", unsafe_allow_html=True)
     st.stop()
 
+mode = st.session_state.mode
+
+# ══ ROUTE TO CORRECT ANALYSIS ══
+if mode == "store" and st.session_state.store_data:
+    sale_s, stock_s, wh_s, MONTHS_S = st.session_state.store_data
+    SIZE_ORDER_S = ['XS','S','M','L','XL','XXL','XXXL','2XL','3XL','STANDARD']
+
+    total_sale_s  = sale_s['NetSale'].sum()
+    total_qty_s   = int(sale_s['SaleQty'].sum())
+    total_stock_s = stock_s['ClosingValue'].sum()
+    total_stk_qty_s = int(stock_s['ClosingQty'].sum())
+    top_store_s   = sale_s.groupby('StoreName')['NetSale'].sum().idxmax() if len(sale_s)>0 else "—"
+
+    k1,k2,k3,k4,k5 = st.columns(5)
+    kpi(k1,"Total Net Sale",   f"₹{fmt_inr(int(total_sale_s))}", f"{MONTHS_S[0]}–{MONTHS_S[-1]}", "💰")
+    kpi(k2,"Total Qty Sold",   f"{total_qty_s:,} Pcs",           "All stores", "📦")
+    kpi(k3,"Closing Stock",    f"₹{fmt_inr(int(total_stock_s))}", f"{total_stk_qty_s:,} Pcs", "🏬")
+    kpi(k4,"Total Stores",     str(sale_s['StoreName'].nunique()), "Active stores", "🏪")
+    kpi(k5,"Top Store",        top_store_s[:20], f"₹{fmt_inr(int(sale_s.groupby('StoreName')['NetSale'].sum().max()))}", "🏆")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    st1,st2,st3,st4,st5,st6,st7,st8,st9,st10 = st.tabs([
+        "📈 Overview","🏪 Store-wise","🏷️ Article-wise",
+        "🎨 Colour-wise","📐 Size-wise","👤 Gender+Category",
+        "🗓️ Season-wise","📊 Sale vs Stock","🏭 Warehouse Stock","📋 Export"
+    ])
+
+    with st1:
+        sec("📈 Monthly Sale Trend")
+        monthly_s = sale_s.groupby('Month')['NetSale'].sum().reindex(MONTHS_S).fillna(0)
+        bi_s = int(monthly_s.values.argmax()); wi_s = int(monthly_s.values.argmin())
+        bcolors_s = ['#9c27b0' if i not in [bi_s,wi_s] else ('#16a34a' if i==bi_s else '#dc2626') for i in range(len(monthly_s))]
+        fig_s = go.Figure(go.Bar(x=MONTHS_S, y=monthly_s.values,
+            marker=dict(color=bcolors_s, line=dict(width=0)),
+            text=[f"₹{fmt_inr(int(v))}" for v in monthly_s.values],
+            textposition='outside', textfont=dict(size=10,color='#1a0030')))
+        fig_s.update_layout(**cl(360,"Monthly Net Sale — All Stores",margin=dict(l=10,r=10,t=55,b=40)),
+            bargap=0.3, yaxis_range=[0,monthly_s.max()*1.25])
+        st.plotly_chart(fig_s, use_container_width=True)
+
+        ca_s,cb_s = st.columns(2)
+        with ca_s:
+            sec("🏆 Top 10 Stores by Sale")
+            top10_s = sale_s.groupby('StoreName')['NetSale'].sum().nlargest(10).sort_values()
+            fig_t10 = go.Figure(go.Bar(x=top10_s.values, y=[s[:28] for s in top10_s.index], orientation='h',
+                marker=dict(color=top10_s.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+                text=[f"₹{fmt_inr(int(v))}" for v in top10_s.values],
+                textposition='outside', textfont=dict(size=10,color='#1a0030')))
+            fig_t10.update_layout(**cl(420,"Top 10 Stores",margin=dict(l=10,r=160,t=55,b=40)),
+                xaxis_range=[0,top10_s.max()*1.45])
+            st.plotly_chart(fig_t10, use_container_width=True)
+        with cb_s:
+            sec("🗂️ Category Mix")
+            cat_s2 = sale_s.groupby('Category')['NetSale'].sum().sort_values(ascending=False)
+            cat_s2 = cat_s2[cat_s2>0]
+            fig_cs2 = go.Figure(go.Pie(labels=cat_s2.index.tolist(), values=cat_s2.values.tolist(), hole=0.5,
+                marker=dict(colors=CAT_COLORS[:len(cat_s2)], line=dict(color='#fff',width=2)),
+                textinfo='label+percent', textfont=dict(size=11,color='#1a0030'),
+                insidetextfont=dict(size=10,color='#fff')))
+            fig_cs2.update_layout(**cl(420,"Category-wise Sale",margin=dict(l=10,r=10,t=55,b=10)))
+            st.plotly_chart(fig_cs2, use_container_width=True)
+
+    with st2:
+        sec("🏪 Store-wise Monthly Sale")
+        stores_list = sorted(sale_s['StoreName'].dropna().unique().tolist())
+        top5_s = sale_s.groupby('StoreName')['NetSale'].sum().nlargest(5).index.tolist()
+        sel_stores_s = st.multiselect("Select Stores", stores_list, default=top5_s[:3], key="sw_sel_s")
+        if sel_stores_s:
+            fig_sw_s = go.Figure()
+            for i,s in enumerate(sel_stores_s):
+                sd = sale_s[sale_s['StoreName']==s].groupby('Month')['NetSale'].sum().reindex(MONTHS_S).fillna(0)
+                fig_sw_s.add_trace(go.Bar(x=MONTHS_S, y=sd.values, name=s[:25],
+                    marker_color=CAT_COLORS[i%len(CAT_COLORS)]))
+            fig_sw_s.update_layout(**cl(400,"Store-wise Monthly Sale",margin=dict(l=10,r=10,t=55,b=40)),
+                barmode='group', bargap=0.12)
+            st.plotly_chart(fig_sw_s, use_container_width=True)
+        sec("📋 Store Summary Table")
+        st_tbl_s = sale_s.groupby('StoreName').agg(
+            NetSale=('NetSale','sum'), Qty=('SaleQty','sum'),
+            MRP=('MRPValue','sum'), Disc=('DiscAmt','sum')
+        ).reset_index().sort_values('NetSale',ascending=False)
+        st_tbl_s['Avg Disc%'] = (st_tbl_s['Disc']/st_tbl_s['MRP']*100).round(1)
+        st_tbl_s['Sale Cont%'] = (st_tbl_s['NetSale']/st_tbl_s['NetSale'].sum()*100).round(2)
+        st_tbl_s['NetSale'] = st_tbl_s['NetSale'].apply(lambda x: f"₹{fmt_inr(int(x))}")
+        st_tbl_s['MRP'] = st_tbl_s['MRP'].apply(lambda x: f"₹{fmt_inr(int(x))}")
+        st_tbl_s['Qty'] = st_tbl_s['Qty'].apply(int)
+        st_tbl_s = st_tbl_s.drop(columns=['Disc'])
+        st_tbl_s.columns = ['Store','Net Sale','Qty','MRP Value','Avg Disc%','Sale Cont%']
+        st.dataframe(st_tbl_s, use_container_width=True, hide_index=True)
+        sec("📅 Store Month-wise Pivot")
+        sw_piv = sale_s.pivot_table(index='StoreName',columns='Month',values='NetSale',aggfunc='sum').reindex(columns=MONTHS_S).fillna(0)
+        sw_piv['Total'] = sw_piv.sum(axis=1)
+        sw_piv = sw_piv.sort_values('Total',ascending=False)
+        sw_piv = sw_piv.map(lambda x: f"₹{fmt_inr(int(x))}" if x!=0 else "—")
+        st.dataframe(sw_piv, use_container_width=True)
+
+    with st3:
+        sec("🏷️ Article-wise Sale Analysis")
+        af1_s,af2_s,af3_s = st.columns(3)
+        with af1_s: a_st_s = st.selectbox("Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="art_st_s")
+        with af2_s: a_cat_s = st.selectbox("Category", ["All"]+sorted(sale_s['Category'].dropna().unique()), key="art_cat_s")
+        with af3_s: a_srch_s = st.text_input("🔍 Search Item", placeholder="Item name...", key="art_srch_s")
+        adf_s = sale_s.copy()
+        if a_st_s != "All": adf_s = adf_s[adf_s['StoreName']==a_st_s]
+        if a_cat_s != "All": adf_s = adf_s[adf_s['Category']==a_cat_s]
+        if a_srch_s: adf_s = adf_s[adf_s['ItemName'].str.contains(a_srch_s, case=False, na=False)]
+        top_arts_s = adf_s.groupby(['ItemID','ItemName'])['NetSale'].sum().sort_values(ascending=False).head(10)
+        top_arts_sorted_s = top_arts_s.sort_values(ascending=True)
+        sec("🏆 Top 10 Articles by Net Sale")
+        if len(top_arts_sorted_s)>0:
+            fig_art_s = go.Figure(go.Bar(
+                x=top_arts_sorted_s.values,
+                y=[f"{idx[1][:22]}..{idx[0][-6:]}" for idx in top_arts_sorted_s.index],
+                orientation='h',
+                marker=dict(color=top_arts_sorted_s.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+                text=[f"₹{fmt_inr(int(v))}" for v in top_arts_sorted_s.values],
+                textposition='outside', textfont=dict(size=11,color='#1a0030')))
+            fig_art_s.update_layout(**cl(420,"Top 10 Articles by Net Sale",margin=dict(l=10,r=160,t=55,b=40)),
+                xaxis_range=[0,top_arts_sorted_s.max()*1.55])
+            st.plotly_chart(fig_art_s, use_container_width=True)
+        sec("📋 Article Summary Table")
+        art_tbl_s = adf_s.groupby(['ItemID','ItemName','Category','Gender']).agg(
+            NetSale=('NetSale','sum'), Qty=('SaleQty','sum'), Stores=('StoreName','nunique')
+        ).reset_index().sort_values('NetSale',ascending=False)
+        art_tbl_s['NetSale'] = art_tbl_s['NetSale'].apply(lambda x: f"₹{fmt_inr(int(x))}")
+        art_tbl_s['Qty'] = art_tbl_s['Qty'].apply(int)
+        art_tbl_s.columns = ['Item ID','Item Name','Category','Gender','Net Sale','Qty','Stores']
+        st.dataframe(art_tbl_s, use_container_width=True, hide_index=True)
+
+    with st4:
+        sec("🎨 Colour-wise Sale Analysis")
+        cf1_s,cf2_s = st.columns(2)
+        with cf1_s: c_st_s = st.selectbox("Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="col_st_s")
+        with cf2_s: c_cat_s = st.selectbox("Category", ["All"]+sorted(sale_s['Category'].dropna().unique()), key="col_cat_s")
+        cdf_s = sale_s.copy()
+        if c_st_s != "All": cdf_s = cdf_s[cdf_s['StoreName']==c_st_s]
+        if c_cat_s != "All": cdf_s = cdf_s[cdf_s['Category']==c_cat_s]
+        col_sale_s = cdf_s.groupby('Color')['NetSale'].sum().sort_values(ascending=False).head(15)
+        fig_col_s = go.Figure(go.Bar(x=col_sale_s.index.tolist(), y=col_sale_s.values,
+            marker=dict(color=CAT_COLORS[:len(col_sale_s)], line=dict(width=0)),
+            text=[f"₹{fmt_inr(int(v))}" for v in col_sale_s.values],
+            textposition='outside', textfont=dict(size=10,color='#1a0030')))
+        fig_col_s.update_layout(**cl(320,"Top Colours by Net Sale",margin=dict(l=10,r=10,t=55,b=70)),
+            bargap=0.3, xaxis_tickangle=-30, yaxis_range=[0,col_sale_s.max()*1.25])
+        st.plotly_chart(fig_col_s, use_container_width=True)
+        col_tbl_s = cdf_s.groupby(['Color','Category']).agg(
+            NetSale=('NetSale','sum'), Qty=('SaleQty','sum')
+        ).reset_index().sort_values('NetSale',ascending=False)
+        col_tbl_s['NetSale'] = col_tbl_s['NetSale'].apply(lambda x: f"₹{fmt_inr(int(x))}")
+        col_tbl_s.columns = ['Colour','Category','Net Sale','Qty']
+        st.dataframe(col_tbl_s, use_container_width=True, hide_index=True)
+
+    with st5:
+        sec("📐 Size-wise Sale Analysis")
+        sf1_s,sf2_s,sf3_s = st.columns(3)
+        with sf1_s: s_st_s = st.selectbox("Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="sz_st_s")
+        with sf2_s: s_gen_s = st.selectbox("Gender", ["All"]+sorted(sale_s['Gender'].dropna().unique()), key="sz_gen_s")
+        with sf3_s: s_cat_s = st.selectbox("Category", ["All"]+sorted(sale_s['Category'].dropna().unique()), key="sz_cat_s")
+        sdf_s = sale_s.copy()
+        if s_st_s != "All": sdf_s = sdf_s[sdf_s['StoreName']==s_st_s]
+        if s_gen_s != "All": sdf_s = sdf_s[sdf_s['Gender']==s_gen_s]
+        if s_cat_s != "All": sdf_s = sdf_s[sdf_s['Category']==s_cat_s]
+        all_sz_s = sdf_s['Size'].dropna().unique().tolist()
+        ord_sz_s = [s for s in SIZE_ORDER_S if s in all_sz_s] + [s for s in all_sz_s if s not in SIZE_ORDER_S]
+        sz_sale_s = sdf_s.groupby('Size')['NetSale'].sum().reindex(ord_sz_s).fillna(0)
+        sz_qty_s  = sdf_s.groupby('Size')['SaleQty'].sum().reindex(ord_sz_s).fillna(0)
+        sa_s,sb_s = st.columns(2)
+        with sa_s:
+            fig_szs_s = go.Figure(go.Bar(x=ord_sz_s, y=sz_sale_s.values,
+                marker=dict(color=sz_sale_s.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+                text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in sz_sale_s.values],
+                textposition='outside'))
+            fig_szs_s.update_layout(**cl(320,"Size-wise Net Sale",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
+            st.plotly_chart(fig_szs_s, use_container_width=True)
+        with sb_s:
+            fig_szq_s = go.Figure(go.Bar(x=ord_sz_s, y=sz_qty_s.values,
+                marker=dict(color=sz_qty_s.values, colorscale=[[0,'#fce7f3'],[0.5,'#ec4899'],[1,'#9d174d']], line=dict(width=0)),
+                text=[str(int(v)) if v>0 else "" for v in sz_qty_s.values],
+                textposition='outside'))
+            fig_szq_s.update_layout(**cl(320,"Size-wise Qty Sold",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
+            st.plotly_chart(fig_szq_s, use_container_width=True)
+
+    with st6:
+        sec("👤 Gender + Category Analysis")
+        gf1_s,gf2_s = st.columns(2)
+        with gf1_s: g_st_s = st.selectbox("Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="gc_st_s")
+        with gf2_s: g_gen_s = st.selectbox("Gender", ["All"]+sorted(sale_s['Gender'].dropna().unique()), key="gc_gen_s")
+        gdf_s = sale_s.copy()
+        if g_st_s != "All": gdf_s = gdf_s[gdf_s['StoreName']==g_st_s]
+        if g_gen_s != "All": gdf_s = gdf_s[gdf_s['Gender']==g_gen_s]
+        ga_s,gb_s = st.columns(2)
+        with ga_s:
+            gdr_s2 = gdf_s.groupby('Gender')['NetSale'].sum().sort_values(ascending=False)
+            gdr_s2 = gdr_s2[gdr_s2>0]
+            fig_g_s = go.Figure(go.Pie(labels=gdr_s2.index.tolist(), values=gdr_s2.values.tolist(), hole=0.5,
+                marker=dict(colors=['#7b1fa2','#e91e63','#1565c0'], line=dict(color='#fff',width=2)),
+                textinfo='label+percent', textfont=dict(size=12,color='#1a0030'),
+                insidetextfont=dict(size=10,color='#fff')))
+            fig_g_s.update_layout(**cl(320,"Gender-wise Sale",margin=dict(l=10,r=10,t=55,b=10)))
+            st.plotly_chart(fig_g_s, use_container_width=True)
+        with gb_s:
+            cat2_s = gdf_s.groupby('Category')['NetSale'].sum().sort_values(ascending=False)
+            cat2_s = cat2_s[cat2_s>0]
+            fig_c2_s = go.Figure(go.Bar(x=cat2_s.index.tolist(), y=cat2_s.values,
+                marker=dict(color=CAT_COLORS[:len(cat2_s)], line=dict(width=0)),
+                text=[f"₹{fmt_inr(int(v))}" for v in cat2_s.values], textposition='outside'))
+            fig_c2_s.update_layout(**cl(320,"Category-wise Sale",margin=dict(l=10,r=10,t=55,b=70)),
+                bargap=0.3, xaxis_tickangle=-30)
+            st.plotly_chart(fig_c2_s, use_container_width=True)
+        sec("📦 Sub Category Analysis")
+        subcat_s = gdf_s.groupby('SubCategory')['NetSale'].sum().sort_values(ascending=False)
+        subcat_s = subcat_s[subcat_s>0]
+        if len(subcat_s)>0:
+            fig_sc_s = go.Figure(go.Bar(x=subcat_s.index.tolist(), y=subcat_s.values,
+                marker=dict(color=CAT_COLORS[:len(subcat_s)], line=dict(width=0)),
+                text=[f"₹{fmt_inr(int(v))}" for v in subcat_s.values], textposition='outside'))
+            fig_sc_s.update_layout(**cl(320,"Sub Category-wise Sale",margin=dict(l=10,r=10,t=55,b=90)),
+                bargap=0.3, xaxis_tickangle=-35)
+            st.plotly_chart(fig_sc_s, use_container_width=True)
+        sec("📋 Gender × Category Table")
+        gc_tbl_s = gdf_s.groupby(['Gender','Category','SubCategory']).agg(
+            NetSale=('NetSale','sum'), Qty=('SaleQty','sum')
+        ).reset_index().sort_values('NetSale',ascending=False)
+        gc_tbl_s = gc_tbl_s[gc_tbl_s['NetSale']>0]
+        gc_tbl_s['NetSale'] = gc_tbl_s['NetSale'].apply(lambda x: f"₹{fmt_inr(int(x))}")
+        gc_tbl_s.columns = ['Gender','Category','Sub Category','Net Sale','Qty']
+        st.dataframe(gc_tbl_s, use_container_width=True, hide_index=True)
+
+    with st7:
+        sec("🗓️ Season-wise Sale Analysis")
+        sea1_s,sea2_s = st.columns(2)
+        with sea1_s: sea_st_s = st.selectbox("Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="sea_st_s")
+        with sea2_s: sea_sel_s = st.multiselect("Season", sorted(sale_s['Season'].dropna().unique()),
+                                                  default=sorted(sale_s['Season'].dropna().unique()), key="sea_sel_s")
+        seadf_s = sale_s.copy()
+        if sea_st_s != "All": seadf_s = seadf_s[seadf_s['StoreName']==sea_st_s]
+        if sea_sel_s: seadf_s = seadf_s[seadf_s['Season'].isin(sea_sel_s)]
+        sea_kpi_s = seadf_s.groupby('Season').agg(NetSale=('NetSale','sum'), Qty=('SaleQty','sum')).reset_index()
+        sea_kpi_s = sea_kpi_s.sort_values('NetSale',ascending=False)
+        cols_sea_s = st.columns(min(len(sea_kpi_s),4))
+        for i,row in enumerate(sea_kpi_s.itertuples()):
+            if i < len(cols_sea_s):
+                with cols_sea_s[i]:
+                    st.markdown(f'''<div style="background:linear-gradient(135deg,{CAT_COLORS[i%len(CAT_COLORS)]},#9c27b0);border-radius:14px;padding:1rem 1.2rem;margin-bottom:.5rem">
+                        <div style="font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.75)">🗓️ {row.Season}</div>
+                        <div style="font-size:1.3rem;font-weight:800;color:#fff">₹{fmt_inr(int(row.NetSale))}</div>
+                        <div style="font-size:.72rem;color:rgba(255,255,255,.7)">{int(row.Qty):,} Pcs</div>
+                    </div>''', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        sa7_s,sb7_s = st.columns(2)
+        with sa7_s:
+            sea_pie_s = seadf_s.groupby('Season')['NetSale'].sum().sort_values(ascending=False)
+            fig_sp_s = go.Figure(go.Pie(labels=sea_pie_s.index.tolist(), values=sea_pie_s.values.tolist(), hole=0.5,
+                marker=dict(colors=CAT_COLORS[:len(sea_pie_s)], line=dict(color='#fff',width=2)),
+                textinfo='label+percent', textfont=dict(size=12,color='#1a0030'),
+                insidetextfont=dict(size=10,color='#fff')))
+            fig_sp_s.update_layout(**cl(320,"Season-wise Sale",margin=dict(l=10,r=10,t=55,b=10)))
+            st.plotly_chart(fig_sp_s, use_container_width=True)
+        with sb7_s:
+            fig_sm_s = go.Figure()
+            for i,sea in enumerate(sea_sel_s or []):
+                sd7_s = seadf_s[seadf_s['Season']==sea].groupby('Month')['NetSale'].sum().reindex(MONTHS_S).fillna(0)
+                fig_sm_s.add_trace(go.Scatter(x=MONTHS_S, y=sd7_s.values, name=sea,
+                    mode='lines+markers', line=dict(color=CAT_COLORS[i%len(CAT_COLORS)],width=2.5), marker=dict(size=7)))
+            fig_sm_s.update_layout(**cl(320,"Season Monthly Trend",margin=dict(l=10,r=10,t=55,b=40)))
+            st.plotly_chart(fig_sm_s, use_container_width=True)
+
+    with st8:
+        sec("📊 Store: Sale vs Closing Stock")
+        sv_st_s = st.selectbox("Filter Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="svs_st_s")
+        sv_sale_s  = sale_s.copy()
+        sv_stk_s   = stock_s.copy()
+        if sv_st_s != "All":
+            sv_sale_s = sv_sale_s[sv_sale_s['StoreName']==sv_st_s]
+            sv_stk_s  = sv_stk_s[sv_stk_s['StoreName']==sv_st_s]
+        store_sale_t  = sv_sale_s.groupby('StoreName')['NetSale'].sum()
+        store_stock_t = sv_stk_s.groupby('StoreName')['ClosingValue'].sum()
+        stores_all_s  = sorted(set(store_sale_t.index) | set(store_stock_t.index))
+        sv_vals_s = [float(store_sale_t.get(s,0)) for s in stores_all_s]
+        sk_vals_s = [float(store_stock_t.get(s,0)) for s in stores_all_s]
+        fig_svs_s = go.Figure()
+        fig_svs_s.add_trace(go.Bar(name='Net Sale', x=[s[:25] for s in stores_all_s], y=sv_vals_s,
+            marker_color='#7b1fa2', text=[f"₹{fmt_inr(int(v))}" for v in sv_vals_s],
+            textposition='outside', textfont=dict(size=9,color='#1a0030')))
+        fig_svs_s.add_trace(go.Bar(name='Closing Stock', x=[s[:25] for s in stores_all_s], y=sk_vals_s,
+            marker_color='#ce93d8', text=[f"₹{fmt_inr(int(v))}" for v in sk_vals_s],
+            textposition='outside', textfont=dict(size=9,color='#1a0030')))
+        fig_svs_s.update_layout(**cl(420,"Store: Sale vs Closing Stock",margin=dict(l=10,r=10,t=55,b=110)),
+            barmode='group', bargap=0.15, xaxis_tickangle=-45)
+        st.plotly_chart(fig_svs_s, use_container_width=True)
+        sec("📊 Sell-Through Rate by Store")
+        str_data_s = []
+        for s in stores_all_s:
+            sv_v = float(store_sale_t.get(s,0))
+            sk_v = float(store_stock_t.get(s,0))
+            t_v  = sv_v + sk_v
+            st_r = round(sv_v/t_v*100,1) if t_v>0 else 0
+            str_data_s.append({'Store':s,'Sale':f"₹{fmt_inr(int(sv_v))}",'Stock':f"₹{fmt_inr(int(sk_v))}",
+                'ST%':f"{st_r}%",'Status':'🟢 Good' if st_r>=60 else ('🟡 Avg' if st_r>=30 else '🔴 Low')})
+        st.dataframe(pd.DataFrame(str_data_s), use_container_width=True, hide_index=True)
+
+    with st9:
+        sec("🏭 Warehouse Stock Analysis")
+        if len(wh_s) > 0:
+            wh_total_qty = int(wh_s['ClosingQty'].sum())
+            wh_total_val = wh_s['ClosingValueMRP'].sum()
+            wh1,wh2,wh3 = st.columns(3)
+            kpi(wh1,"Total WH Qty",   f"{wh_total_qty:,} Pcs", "All godowns", "📦")
+            kpi(wh2,"Total MRP Value", f"₹{fmt_inr(int(wh_total_val))}", "Closing stock", "💰")
+            kpi(wh3,"Total Godowns",   str(wh_s['GodownName'].nunique()), "Active godowns", "🏭")
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # Godown-wise
+            sec("🏭 Godown-wise Stock")
+            gd_s = wh_s.groupby('GodownName').agg(
+                ClosingQty=('ClosingQty','sum'), ClosingValueMRP=('ClosingValueMRP','sum')
+            ).reset_index().sort_values('ClosingValueMRP',ascending=False)
+            wga,wgb = st.columns(2)
+            with wga:
+                fig_gd_s = go.Figure(go.Bar(
+                    x=gd_s['ClosingValueMRP'].values,
+                    y=[s[:25] for s in gd_s['GodownName'].tolist()], orientation='h',
+                    marker=dict(color=gd_s['ClosingValueMRP'].values, colorscale=BLUE_SEQ, line=dict(width=0)),
+                    text=[f"₹{fmt_inr(int(v))}" for v in gd_s['ClosingValueMRP'].values],
+                    textposition='outside', textfont=dict(size=10,color='#1a0030')))
+                fig_gd_s.update_layout(**cl(360,"Godown-wise Stock Value",margin=dict(l=10,r=160,t=55,b=40)),
+                    xaxis_range=[0,gd_s['ClosingValueMRP'].max()*1.45])
+                st.plotly_chart(fig_gd_s, use_container_width=True)
+            with wgb:
+                fig_gdq_s = go.Figure(go.Bar(
+                    x=gd_s['ClosingQty'].values,
+                    y=[s[:25] for s in gd_s['GodownName'].tolist()], orientation='h',
+                    marker=dict(color=gd_s['ClosingQty'].values, colorscale=BLUE_SEQ, line=dict(width=0)),
+                    text=[str(int(v)) for v in gd_s['ClosingQty'].values],
+                    textposition='outside', textfont=dict(size=10,color='#1a0030')))
+                fig_gdq_s.update_layout(**cl(360,"Godown-wise Stock Qty",margin=dict(l=10,r=100,t=55,b=40)),
+                    xaxis_range=[0,gd_s['ClosingQty'].max()*1.35])
+                st.plotly_chart(fig_gdq_s, use_container_width=True)
+
+            # Season-wise WH
+            sec("🗓️ Season-wise Warehouse Stock")
+            wh_sea = wh_s.groupby('Season').agg(
+                ClosingQty=('ClosingQty','sum'), ClosingValueMRP=('ClosingValueMRP','sum')
+            ).reset_index().sort_values('ClosingValueMRP',ascending=False)
+            whs_cols = st.columns(min(len(wh_sea),4))
+            for i,row in enumerate(wh_sea.itertuples()):
+                if i < len(whs_cols):
+                    with whs_cols[i]:
+                        st.markdown(f'''<div style="background:linear-gradient(135deg,{CAT_COLORS[i%len(CAT_COLORS)]},#9c27b0);border-radius:14px;padding:1rem 1.2rem;margin-bottom:.5rem">
+                            <div style="font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.75)">🗓️ {row.Season}</div>
+                            <div style="font-size:1.1rem;font-weight:800;color:#fff">₹{fmt_inr(int(row.ClosingValueMRP))}</div>
+                            <div style="font-size:.72rem;color:rgba(255,255,255,.7)">{int(row.ClosingQty):,} Pcs</div>
+                        </div>''', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # Article-wise WH
+            sec("🏷️ Top 10 Articles by WH Stock")
+            wh_arts = wh_s.groupby(['ItemID','ItemName'])['ClosingQty'].sum().sort_values(ascending=False).head(10)
+            wh_arts_sorted = wh_arts.sort_values(ascending=True)
+            if len(wh_arts_sorted)>0:
+                fig_wart_s = go.Figure(go.Bar(
+                    x=wh_arts_sorted.values,
+                    y=[f"{idx[1][:22]}..{idx[0][-6:]}" for idx in wh_arts_sorted.index],
+                    orientation='h',
+                    marker=dict(color=wh_arts_sorted.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+                    text=[str(int(v)) for v in wh_arts_sorted.values],
+                    textposition='outside', textfont=dict(size=11,color='#1a0030')))
+                fig_wart_s.update_layout(**cl(420,"Top 10 Articles by WH Stock Qty",margin=dict(l=10,r=100,t=55,b=40)),
+                    xaxis_range=[0,wh_arts_sorted.max()*1.4])
+                st.plotly_chart(fig_wart_s, use_container_width=True)
+
+            # Size-wise WH
+            sec("📐 Size-wise Warehouse Stock")
+            SIZE_ORDER_WH = ['XS','S','M','L','XL','XXL','XXXL','2XL','3XL','STANDARD']
+            all_wh_sz = wh_s['Size'].dropna().unique().tolist()
+            ord_wh_sz = [s for s in SIZE_ORDER_WH if s in all_wh_sz] + [s for s in all_wh_sz if s not in SIZE_ORDER_WH]
+            wsz_qty_s = wh_s.groupby('Size')['ClosingQty'].sum().reindex(ord_wh_sz).fillna(0)
+            wsz_val_s = wh_s.groupby('Size')['ClosingValueMRP'].sum().reindex(ord_wh_sz).fillna(0)
+            wha_s,whb_s = st.columns(2)
+            with wha_s:
+                fig_wsz_s = go.Figure(go.Bar(x=ord_wh_sz, y=wsz_qty_s.values,
+                    marker=dict(color=wsz_qty_s.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+                    text=[str(int(v)) if v>0 else "" for v in wsz_qty_s.values],
+                    textposition='outside'))
+                fig_wsz_s.update_layout(**cl(320,"Size-wise WH Stock Qty",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
+                st.plotly_chart(fig_wsz_s, use_container_width=True)
+            with whb_s:
+                fig_wsv_s = go.Figure(go.Bar(x=ord_wh_sz, y=wsz_val_s.values,
+                    marker=dict(color=wsz_val_s.values, colorscale=[[0,'#fce7f3'],[0.5,'#ec4899'],[1,'#9d174d']], line=dict(width=0)),
+                    text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in wsz_val_s.values],
+                    textposition='outside'))
+                fig_wsv_s.update_layout(**cl(320,"Size-wise WH Stock Value",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
+                st.plotly_chart(fig_wsv_s, use_container_width=True)
+
+            # WH Detail Table
+            sec("📋 Warehouse Stock Detail Table")
+            wh_tbl_s = wh_s.groupby(['GodownName','ItemID','ItemName','Category','Gender','Size','Color','Season']).agg(
+                ClosingQty=('ClosingQty','sum'), ClosingValueMRP=('ClosingValueMRP','sum')
+            ).reset_index().sort_values('ClosingQty',ascending=False)
+            wh_tbl_s['ClosingValueMRP'] = wh_tbl_s['ClosingValueMRP'].apply(lambda x: f"₹{fmt_inr(int(x))}")
+            wh_tbl_s.columns = ['Godown','Item ID','Item Name','Category','Gender','Size','Colour','Season','Closing Qty','Closing Value']
+            st.dataframe(wh_tbl_s, use_container_width=True, hide_index=True)
+        else:
+            st.info("No warehouse data found in Sheet2")
+
+    with st10:
+        sec("📥 Export Data")
+        from openpyxl import Workbook
+        from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+        def build_store_excel():
+            wb = Workbook()
+            def sc(ws, row, col, val, bg="FFFFFF", fg="1a0030", bold=False, sz=9):
+                cell = ws.cell(row=row, column=col, value=val)
+                cell.font = Font(bold=bold, size=sz, color=fg.replace('#',''), name="Calibri")
+                cell.fill = PatternFill("solid", fgColor=bg.replace('#',''))
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.border = Border(left=Side(style='thin',color="e5e7eb"),right=Side(style='thin',color="e5e7eb"),
+                    top=Side(style='thin',color="e5e7eb"),bottom=Side(style='thin',color="e5e7eb"))
+            ws1_e = wb.active; ws1_e.title = "Store Summary"
+            ws1_e.sheet_view.showGridLines = False
+            hdrs = ['Store','Net Sale (₹)','Total Qty','MRP Value (₹)','Avg Disc%']
+            for ci,h in enumerate(hdrs,1): sc(ws1_e,1,ci,h,"1e3a5f","FFFFFF",bold=True,sz=10)
+            st_data_e = sale_s.groupby('StoreName').agg(
+                NetSale=('NetSale','sum'), Qty=('SaleQty','sum'),
+                MRP=('MRPValue','sum'), Disc=('DiscAmt','sum')).reset_index().sort_values('NetSale',ascending=False)
+            for ri,row in enumerate(st_data_e.itertuples(),2):
+                dp = round(row.Disc/row.MRP*100,1) if row.MRP>0 else 0
+                bg = "f5f3ff" if ri%2==0 else "FFFFFF"
+                for ci,v in enumerate([row.StoreName,int(row.NetSale),int(row.Qty),int(row.MRP),f"{dp}%"],1):
+                    sc(ws1_e,ri,ci,v,bg)
+            for ci,w in enumerate([35,15,12,15,10],1):
+                ws1_e.column_dimensions[get_column_letter(ci)].width = w
+            ws2_e = wb.create_sheet("Monthly Store")
+            ws2_e.sheet_view.showGridLines = False
+            sc(ws2_e,1,1,"Store","1e3a5f","FFFFFF",bold=True,sz=10)
+            for ci,m in enumerate(MONTHS_S,2): sc(ws2_e,1,ci,m,"1e3a5f","FFFFFF",bold=True,sz=9)
+            sc(ws2_e,1,len(MONTHS_S)+2,"Total","1e3a5f","FFFFFF",bold=True,sz=10)
+            piv_e = sale_s.pivot_table(index='StoreName',columns='Month',values='NetSale',aggfunc='sum').reindex(columns=MONTHS_S).fillna(0)
+            piv_e['Total'] = piv_e.sum(axis=1)
+            for ri,(sn,row) in enumerate(piv_e.iterrows(),2):
+                sc(ws2_e,ri,1,sn,"f5f3ff" if ri%2==0 else "FFFFFF")
+                for ci,v in enumerate(row.values,2):
+                    sc(ws2_e,ri,ci,int(v) if v>0 else "","f5f3ff" if ri%2==0 else "FFFFFF")
+            ws2_e.column_dimensions['A'].width = 35
+            ws3_e = wb.create_sheet("Stock Summary")
+            ws3_e.sheet_view.showGridLines = False
+            for ci,h in enumerate(['Store','Closing Qty','Closing Value (₹)'],1): sc(ws3_e,1,ci,h,"1e3a5f","FFFFFF",bold=True,sz=10)
+            stk_e = stock_s.groupby('StoreName').agg(Qty=('ClosingQty','sum'),Val=('ClosingValue','sum')).reset_index().sort_values('Val',ascending=False)
+            for ri,row in enumerate(stk_e.itertuples(),2):
+                bg = "f5f3ff" if ri%2==0 else "FFFFFF"
+                for ci,v in enumerate([row.StoreName,int(row.Qty),int(row.Val)],1): sc(ws3_e,ri,ci,v,bg)
+            for ci,w in enumerate([35,12,18],1): ws3_e.column_dimensions[get_column_letter(ci)].width = w
+            if len(wh_s)>0:
+                ws4_e = wb.create_sheet("Warehouse Stock")
+                ws4_e.sheet_view.showGridLines = False
+                wh_hdrs = ['Godown','Item ID','Item Name','Category','Gender','Size','Season','Closing Qty','Closing Value MRP']
+                for ci,h in enumerate(wh_hdrs,1): sc(ws4_e,1,ci,h,"1e3a5f","FFFFFF",bold=True,sz=10)
+                wh_e = wh_s.groupby(['GodownName','ItemID','ItemName','Category','Gender','Size','Season']).agg(
+                    Qty=('ClosingQty','sum'),Val=('ClosingValueMRP','sum')).reset_index().sort_values('Qty',ascending=False)
+                for ri,row in enumerate(wh_e.itertuples(),2):
+                    bg = "f5f3ff" if ri%2==0 else "FFFFFF"
+                    for ci,v in enumerate([row.GodownName,row.ItemID,row.ItemName,row.Category,row.Gender,row.Size,row.Season,int(row.Qty),int(row.Val)],1):
+                        sc(ws4_e,ri,ci,v,bg)
+                for ci,w in enumerate([22,20,30,15,10,10,10,12,18],1):
+                    ws4_e.column_dimensions[get_column_letter(ci)].width = w
+            out = BytesIO(); wb.save(out); out.seek(0)
+            return out
+        store_excel = build_store_excel()
+        st.download_button("📥 Download Store Excel Report", data=store_excel,
+            file_name="Dcyphr_Store_Report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        sec("📊 Raw Data Preview")
+        prev_s = sale_s[['StoreName','Month','Category','SubCategory','Gender','Size','Color','Season','SaleQty','NetSale']].copy()
+        prev_s.columns = ['Store','Month','Category','Sub Category','Gender','Size','Colour','Season','Sale Qty','Net Sale']
+        st.dataframe(prev_s, use_container_width=True, hide_index=True)
+
+    st.stop()
+
+# Channel mode continues below
 df, MONTHS_ORDER, MONTH_SHORT = st.session_state.data
 mode = st.session_state.mode
 
