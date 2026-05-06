@@ -264,32 +264,31 @@ def process_store(file_bytes):
     present_months = [m for m in STORE_MONTH_ORDER if m in sale['Month'].unique()]
 
     # Sheet3 - Warehouse stock
-    try:
-        wh = pd.read_excel(file_bytes, sheet_name='Sheet2', header=0)
-        wh.columns = [str(c).strip() for c in wh.columns]
-        wh = wh.rename(columns={
-            'LOCATION NAME': 'Location', 'STORE CODE': 'StoreCode',
-            'ITEM NO/ARTICLE CODE': 'ItemID', 'ITEM NAME': 'ItemName',
-            'COLOR': 'Color', 'SIZE': 'Size',
-            'Divison  Desc': 'Division', 'Category Desc': 'Category',
-            'Sub Category Desc': 'SubCategory', 'Sub Category2 Code.': 'FitType',
-            'Gender': 'Gender', 'Season Sub Group': 'Season', 'Brand': 'Brand',
-            'MRP/UNIT': 'MRP', 'CLOSING STOCK QTY': 'ClosingQty',
-            'CLOSING VALUE(MRP)': 'ClosingValueMRP',
-            'CLOSING VALUE( COST PRICE WITHOUT TAX)': 'ClosingValueCost',
-            'GODOWN NAME': 'GodownName',
-        })
-        for col in ['MRP','ClosingQty','ClosingValueMRP','ClosingValueCost']:
-            if col in wh.columns:
-                wh[col] = pd.to_numeric(wh[col], errors='coerce').fillna(0)
-        wh['Color']  = wh['Color'].astype(str).str.upper().str.strip()
-        wh['Size']   = wh['Size'].astype(str).str.upper().str.strip()
-        wh['Gender'] = wh['Gender'].astype(str).str.upper().str.strip()
-        wh['Season'] = wh['Season'].astype(str).str.strip()
-        wh['Category'] = wh['Category'].astype(str).str.upper().str.strip()
-        wh['ItemName'] = wh['ItemName'].astype(str).str.strip()
-    except:
-        wh = pd.DataFrame()
+    wh = pd.read_excel(file_bytes, sheet_name='Sheet2', header=0)
+    wh.columns = [str(c).strip() for c in wh.columns]
+    # Season Sub Group is the correct season column
+    wh = wh.rename(columns={
+        'LOCATION NAME': 'Location', 'STORE CODE': 'StoreCode',
+        'ITEM NO/ARTICLE CODE': 'ItemID', 'ITEM NAME': 'ItemName',
+        'COLOR': 'Color', 'SIZE': 'Size',
+        'Divison  Desc': 'Division', 'Category Desc': 'Category',
+        'Sub Category Desc': 'SubCategory', 'Sub Category2 Code.': 'FitType',
+        'Gender': 'Gender', 'Season Sub Group': 'Season', 'Brand': 'Brand',
+        'MRP/UNIT': 'MRP', 'CLOSING STOCK QTY': 'ClosingQty',
+        'CLOSING VALUE(MRP)': 'ClosingValueMRP',
+        'CLOSING VALUE( COST PRICE WITHOUT TAX)': 'ClosingValueCost',
+        'GODOWN NAME': 'GodownName',
+    })
+    for col in ['MRP','ClosingQty','ClosingValueMRP','ClosingValueCost']:
+        if col in wh.columns:
+            wh[col] = pd.to_numeric(wh[col], errors='coerce').fillna(0)
+    wh['Color']    = wh['Color'].astype(str).str.upper().str.strip()
+    wh['Size']     = wh['Size'].astype(str).str.upper().str.strip()
+    wh['Gender']   = wh['Gender'].astype(str).str.upper().str.strip()
+    wh['Season']   = wh['Season'].astype(str).str.strip()
+    wh['Category'] = wh['Category'].astype(str).str.upper().str.strip()
+    wh['ItemName'] = wh['ItemName'].astype(str).str.strip()
+    wh['GodownName'] = wh['GodownName'].astype(str).str.strip()
 
     return sale, stock, wh, present_months
 
