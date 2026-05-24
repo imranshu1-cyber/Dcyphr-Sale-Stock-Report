@@ -573,7 +573,7 @@ if mode == "store" and st.session_state.store_data:
                     fig_szq_s.add_trace(go.Bar(
                         name=div, x=ord_sz_s, y=dq.values,
                         marker_color=CAT_COLORS[i%len(CAT_COLORS)],
-                        text=[str(int(v)) if v>0 else "" for v in dq.values],
+                        text=[f"{int(v)} Pcs" if v>0 else "" for v in dq.values],
                         textposition='outside', textfont=dict(size=9,color='#1a0030')))
                 fig_szq_s.update_layout(**cl(360,f"Size-wise Qty Sold — {sz_filter_label}",margin=dict(l=10,r=10,t=55,b=40)),
                     barmode='group', bargap=0.15)
@@ -591,7 +591,7 @@ if mode == "store" and st.session_state.store_data:
             with sb_s:
                 fig_szq_s = go.Figure(go.Bar(x=ord_sz_s, y=sz_qty_s.values,
                     marker=dict(color=sz_qty_s.values, colorscale=[[0,'#fce7f3'],[0.5,'#ec4899'],[1,'#9d174d']], line=dict(width=0)),
-                    text=[str(int(v)) if v>0 else "" for v in sz_qty_s.values],
+                    text=[f"{int(v)} Pcs" if v>0 else "" for v in sz_qty_s.values],
                     textposition='outside'))
                 fig_szq_s.update_layout(**cl(320,f"Size-wise Qty Sold — {sz_filter_label}",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
                 st.plotly_chart(fig_szq_s, use_container_width=True)
