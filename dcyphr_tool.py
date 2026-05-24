@@ -455,15 +455,15 @@ if mode == "store" and st.session_state.store_data:
         sec("🏷️ Article-wise Sale Analysis")
         af1_s,af2_s,af3_s,af4_s = st.columns(4)
         with af1_s: a_st_s = st.selectbox("Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="art_st_s")
-        with af2_s: a_div_s = st.multiselect("Division", sorted(sale_s['DivisionDesc'].dropna().unique()), key="art_div_s")
+        with af2_s: a_cat_s = st.multiselect("Category", sorted(sale_s['Category'].dropna().unique()), key="art_cat_s")
         with af3_s:
-            div_cats_s = sorted(sale_s[sale_s['DivisionDesc'].isin(a_div_s)]['Category'].dropna().unique()) if a_div_s else sorted(sale_s['Category'].dropna().unique())
-            a_cat_s = st.multiselect("Category", div_cats_s, key="art_cat_s")
+            cat_divs_s = sorted(sale_s[sale_s['Category'].isin(a_cat_s)]['DivisionDesc'].dropna().unique()) if a_cat_s else sorted(sale_s['DivisionDesc'].dropna().unique())
+            a_div_s = st.multiselect("Division", cat_divs_s, key="art_div_s")
         with af4_s: a_srch_s = st.text_input("🔍 Search Item", placeholder="Item name...", key="art_srch_s")
         adf_s = sale_s.copy()
         if a_st_s != "All": adf_s = adf_s[adf_s['StoreName']==a_st_s]
-        if a_div_s: adf_s = adf_s[adf_s['DivisionDesc'].isin(a_div_s)]
         if a_cat_s: adf_s = adf_s[adf_s['Category'].isin(a_cat_s)]
+        if a_div_s: adf_s = adf_s[adf_s['DivisionDesc'].isin(a_div_s)]
         if a_srch_s: adf_s = adf_s[adf_s['ItemName'].str.contains(a_srch_s, case=False, na=False)]
         top_arts_s = adf_s.groupby(['ItemID','ItemName'])['NetSale'].sum().sort_values(ascending=False).head(10)
         top_arts_sorted_s = top_arts_s.sort_values(ascending=True)
@@ -492,14 +492,14 @@ if mode == "store" and st.session_state.store_data:
         sec("🎨 Colour-wise Sale Analysis")
         cf1_s,cf2_s,cf3_s = st.columns(3)
         with cf1_s: c_st_s = st.selectbox("Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="col_st_s")
-        with cf2_s: c_div_s = st.multiselect("Division", sorted(sale_s['DivisionDesc'].dropna().unique()), key="col_div_s")
+        with cf2_s: c_cat_s = st.multiselect("Category", sorted(sale_s['Category'].dropna().unique()), key="col_cat_s")
         with cf3_s:
-            cdiv_cats_s = sorted(sale_s[sale_s['DivisionDesc'].isin(c_div_s)]['Category'].dropna().unique()) if c_div_s else sorted(sale_s['Category'].dropna().unique())
-            c_cat_s = st.multiselect("Category", cdiv_cats_s, key="col_cat_s")
+            ccat_divs_s = sorted(sale_s[sale_s['Category'].isin(c_cat_s)]['DivisionDesc'].dropna().unique()) if c_cat_s else sorted(sale_s['DivisionDesc'].dropna().unique())
+            c_div_s = st.multiselect("Division", ccat_divs_s, key="col_div_s")
         cdf_s = sale_s.copy()
         if c_st_s != "All": cdf_s = cdf_s[cdf_s['StoreName']==c_st_s]
-        if c_div_s: cdf_s = cdf_s[cdf_s['DivisionDesc'].isin(c_div_s)]
         if c_cat_s: cdf_s = cdf_s[cdf_s['Category'].isin(c_cat_s)]
+        if c_div_s: cdf_s = cdf_s[cdf_s['DivisionDesc'].isin(c_div_s)]
         col_sale_s = cdf_s.groupby('Color')['NetSale'].sum().sort_values(ascending=False).head(15)
         fig_col_s = go.Figure(go.Bar(x=col_sale_s.index.tolist(), y=col_sale_s.values,
             marker=dict(color=CAT_COLORS[:len(col_sale_s)], line=dict(width=0)),
@@ -517,19 +517,18 @@ if mode == "store" and st.session_state.store_data:
 
     with st5:
         sec("📐 Size-wise Sale Analysis")
-        sf1_s,sf2_s,sf3_s,sf4_s,sf5_s = st.columns(5)
+        sf1_s,sf2_s,sf3_s,sf4_s = st.columns(4)
         with sf1_s: s_st_s = st.selectbox("Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="sz_st_s")
         with sf2_s: s_gen_s = st.selectbox("Gender", ["All"]+sorted(sale_s['Gender'].dropna().unique()), key="sz_gen_s")
-        with sf3_s: s_div_s = st.multiselect("Division", sorted(sale_s['DivisionDesc'].dropna().unique()), key="sz_div_s")
+        with sf3_s: s_cat_s = st.multiselect("Category", sorted(sale_s['Category'].dropna().unique()), key="sz_cat_s")
         with sf4_s:
-            sdiv_cats_s = sorted(sale_s[sale_s['DivisionDesc'].isin(s_div_s)]['Category'].dropna().unique()) if s_div_s else sorted(sale_s['Category'].dropna().unique())
-            s_cat_s = st.multiselect("Category", sdiv_cats_s, key="sz_cat_s")
-        with sf5_s: pass
+            scat_divs_s = sorted(sale_s[sale_s['Category'].isin(s_cat_s)]['DivisionDesc'].dropna().unique()) if s_cat_s else sorted(sale_s['DivisionDesc'].dropna().unique())
+            s_div_s = st.multiselect("Division", scat_divs_s, key="sz_div_s")
         sdf_s = sale_s.copy()
         if s_st_s != "All": sdf_s = sdf_s[sdf_s['StoreName']==s_st_s]
         if s_gen_s != "All": sdf_s = sdf_s[sdf_s['Gender']==s_gen_s]
-        if s_div_s: sdf_s = sdf_s[sdf_s['DivisionDesc'].isin(s_div_s)]
         if s_cat_s: sdf_s = sdf_s[sdf_s['Category'].isin(s_cat_s)]
+        if s_div_s: sdf_s = sdf_s[sdf_s['DivisionDesc'].isin(s_div_s)]
         all_sz_s = sdf_s['Size'].dropna().unique().tolist()
         ord_sz_s = [s for s in SIZE_ORDER_S if s in all_sz_s] + [s for s in all_sz_s if s not in SIZE_ORDER_S]
         sz_sale_s = sdf_s.groupby('Size')['NetSale'].sum().reindex(ord_sz_s).fillna(0)
@@ -555,15 +554,15 @@ if mode == "store" and st.session_state.store_data:
         gf1_s,gf2_s,gf3_s,gf4_s = st.columns(4)
         with gf1_s: g_st_s = st.selectbox("Store", ["All"]+sorted(sale_s['StoreName'].dropna().unique()), key="gc_st_s")
         with gf2_s: g_gen_s = st.selectbox("Gender", ["All"]+sorted(sale_s['Gender'].dropna().unique()), key="gc_gen_s")
-        with gf3_s: g_div_s = st.multiselect("Division", sorted(sale_s['DivisionDesc'].dropna().unique()), key="gc_div_s")
+        with gf3_s: g_cat_s = st.multiselect("Category", sorted(sale_s['Category'].dropna().unique()), key="gc_cat_s")
         with gf4_s:
-            gdiv_cats_s = sorted(sale_s[sale_s['DivisionDesc'].isin(g_div_s)]['Category'].dropna().unique()) if g_div_s else sorted(sale_s['Category'].dropna().unique())
-            g_cat_s = st.multiselect("Category", gdiv_cats_s, key="gc_cat_s")
+            gcat_divs_s = sorted(sale_s[sale_s['Category'].isin(g_cat_s)]['DivisionDesc'].dropna().unique()) if g_cat_s else sorted(sale_s['DivisionDesc'].dropna().unique())
+            g_div_s = st.multiselect("Division", gcat_divs_s, key="gc_div_s")
         gdf_s = sale_s.copy()
         if g_st_s != "All": gdf_s = gdf_s[gdf_s['StoreName']==g_st_s]
         if g_gen_s != "All": gdf_s = gdf_s[gdf_s['Gender']==g_gen_s]
-        if g_div_s: gdf_s = gdf_s[gdf_s['DivisionDesc'].isin(g_div_s)]
         if g_cat_s: gdf_s = gdf_s[gdf_s['Category'].isin(g_cat_s)]
+        if g_div_s: gdf_s = gdf_s[gdf_s['DivisionDesc'].isin(g_div_s)]
         ga_s,gb_s = st.columns(2)
         with ga_s:
             gdr_s2 = gdf_s.groupby('Gender')['NetSale'].sum().sort_values(ascending=False)
