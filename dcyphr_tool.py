@@ -467,16 +467,25 @@ if mode == "store" and st.session_state.store_data:
         if a_srch_s: adf_s = adf_s[adf_s['ItemName'].str.contains(a_srch_s, case=False, na=False)]
         top_arts_s = adf_s.groupby(['ItemID','ItemName'])['NetSale'].sum().sort_values(ascending=False).head(10)
         top_arts_sorted_s = top_arts_s.sort_values(ascending=True)
+        # Build chart title with active filters
+        art_title_parts = []
+        if a_cat_s: art_title_parts.append(" + ".join(a_cat_s))
+        if a_div_s: art_title_parts.append(" + ".join(a_div_s))
+        art_chart_title = "Top 10 Articles by Net Sale"
+        if art_title_parts: art_chart_title += f" — {' > '.join(art_title_parts)}"
+
         sec("🏆 Top 10 Articles by Net Sale")
         if len(top_arts_sorted_s)>0:
+            # Full item name + item ID
+            y_labels = [f"{idx[1][:35]} [{idx[0]}]" for idx in top_arts_sorted_s.index]
             fig_art_s = go.Figure(go.Bar(
                 x=top_arts_sorted_s.values,
-                y=[f"{idx[1][:22]}..{idx[0][-6:]}" for idx in top_arts_sorted_s.index],
+                y=y_labels,
                 orientation='h',
                 marker=dict(color=top_arts_sorted_s.values, colorscale=BLUE_SEQ, line=dict(width=0)),
                 text=[f"₹{fmt_inr(int(v))}" for v in top_arts_sorted_s.values],
                 textposition='outside', textfont=dict(size=11,color='#1a0030')))
-            fig_art_s.update_layout(**cl(420,"Top 10 Articles by Net Sale",margin=dict(l=10,r=160,t=55,b=40)),
+            fig_art_s.update_layout(**cl(480,art_chart_title,margin=dict(l=10,r=160,t=55,b=40)),
                 xaxis_range=[0,top_arts_sorted_s.max()*1.55])
             st.plotly_chart(fig_art_s, use_container_width=True)
         sec("📋 Article Summary Table")
