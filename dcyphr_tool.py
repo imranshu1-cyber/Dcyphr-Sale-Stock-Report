@@ -540,23 +540,61 @@ if mode == "store" and st.session_state.store_data:
         if s_div_s: sdf_s = sdf_s[sdf_s['DivisionDesc'].isin(s_div_s)]
         all_sz_s = sdf_s['Size'].dropna().unique().tolist()
         ord_sz_s = [s for s in SIZE_ORDER_S if s in all_sz_s] + [s for s in all_sz_s if s not in SIZE_ORDER_S]
-        sz_sale_s = sdf_s.groupby('Size')['NetSale'].sum().reindex(ord_sz_s).fillna(0)
-        sz_qty_s  = sdf_s.groupby('Size')['SaleQty'].sum().reindex(ord_sz_s).fillna(0)
+
+        # Build chart title with active filters
+        sz_title_parts = []
+        if s_cat_s: sz_title_parts.append(" + ".join(s_cat_s))
+        if s_div_s: sz_title_parts.append(" + ".join(s_div_s))
+        sz_filter_label = " > ".join(sz_title_parts) if sz_title_parts else "All"
+
         sa_s,sb_s = st.columns(2)
-        with sa_s:
-            fig_szs_s = go.Figure(go.Bar(x=ord_sz_s, y=sz_sale_s.values,
-                marker=dict(color=sz_sale_s.values, colorscale=BLUE_SEQ, line=dict(width=0)),
-                text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in sz_sale_s.values],
-                textposition='outside'))
-            fig_szs_s.update_layout(**cl(320,"Size-wise Net Sale",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
-            st.plotly_chart(fig_szs_s, use_container_width=True)
-        with sb_s:
-            fig_szq_s = go.Figure(go.Bar(x=ord_sz_s, y=sz_qty_s.values,
-                marker=dict(color=sz_qty_s.values, colorscale=[[0,'#fce7f3'],[0.5,'#ec4899'],[1,'#9d174d']], line=dict(width=0)),
-                text=[str(int(v)) if v>0 else "" for v in sz_qty_s.values],
-                textposition='outside'))
-            fig_szq_s.update_layout(**cl(320,"Size-wise Qty Sold",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
-            st.plotly_chart(fig_szq_s, use_container_width=True)
+
+        # If multiple divisions selected — grouped bar by division
+        active_divs_s = sdf_s['DivisionDesc'].dropna().unique().tolist()
+        if len(active_divs_s) > 1:
+            with sa_s:
+                fig_szs_s = go.Figure()
+                for i,div in enumerate(sorted(active_divs_s)):
+                    ddf = sdf_s[sdf_s['DivisionDesc']==div]
+                    dv = ddf.groupby('Size')['NetSale'].sum().reindex(ord_sz_s).fillna(0)
+                    fig_szs_s.add_trace(go.Bar(
+                        name=div, x=ord_sz_s, y=dv.values,
+                        marker_color=CAT_COLORS[i%len(CAT_COLORS)],
+                        text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in dv.values],
+                        textposition='outside', textfont=dict(size=9,color='#1a0030')))
+                fig_szs_s.update_layout(**cl(360,f"Size-wise Net Sale — {sz_filter_label}",margin=dict(l=10,r=10,t=55,b=40)),
+                    barmode='group', bargap=0.15)
+                st.plotly_chart(fig_szs_s, use_container_width=True)
+            with sb_s:
+                fig_szq_s = go.Figure()
+                for i,div in enumerate(sorted(active_divs_s)):
+                    ddf = sdf_s[sdf_s['DivisionDesc']==div]
+                    dq = ddf.groupby('Size')['SaleQty'].sum().reindex(ord_sz_s).fillna(0)
+                    fig_szq_s.add_trace(go.Bar(
+                        name=div, x=ord_sz_s, y=dq.values,
+                        marker_color=CAT_COLORS[i%len(CAT_COLORS)],
+                        text=[str(int(v)) if v>0 else "" for v in dq.values],
+                        textposition='outside', textfont=dict(size=9,color='#1a0030')))
+                fig_szq_s.update_layout(**cl(360,f"Size-wise Qty Sold — {sz_filter_label}",margin=dict(l=10,r=10,t=55,b=40)),
+                    barmode='group', bargap=0.15)
+                st.plotly_chart(fig_szq_s, use_container_width=True)
+        else:
+            sz_sale_s = sdf_s.groupby('Size')['NetSale'].sum().reindex(ord_sz_s).fillna(0)
+            sz_qty_s  = sdf_s.groupby('Size')['SaleQty'].sum().reindex(ord_sz_s).fillna(0)
+            with sa_s:
+                fig_szs_s = go.Figure(go.Bar(x=ord_sz_s, y=sz_sale_s.values,
+                    marker=dict(color=sz_sale_s.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+                    text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in sz_sale_s.values],
+                    textposition='outside'))
+                fig_szs_s.update_layout(**cl(320,f"Size-wise Net Sale — {sz_filter_label}",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
+                st.plotly_chart(fig_szs_s, use_container_width=True)
+            with sb_s:
+                fig_szq_s = go.Figure(go.Bar(x=ord_sz_s, y=sz_qty_s.values,
+                    marker=dict(color=sz_qty_s.values, colorscale=[[0,'#fce7f3'],[0.5,'#ec4899'],[1,'#9d174d']], line=dict(width=0)),
+                    text=[str(int(v)) if v>0 else "" for v in sz_qty_s.values],
+                    textposition='outside'))
+                fig_szq_s.update_layout(**cl(320,f"Size-wise Qty Sold — {sz_filter_label}",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
+                st.plotly_chart(fig_szq_s, use_container_width=True)
 
     with st6:
         sec("👤 Gender + Category Analysis")
