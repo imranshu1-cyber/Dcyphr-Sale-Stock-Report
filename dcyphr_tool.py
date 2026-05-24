@@ -718,7 +718,7 @@ if mode == "store" and st.session_state.store_data:
             wh_sea = wh_s.groupby('Season').agg(
                 ClosingQty=('ClosingQty','sum'), ClosingValueMRP=('ClosingValueMRP','sum')
             ).reset_index().sort_values('ClosingValueMRP',ascending=False)
-            whs_cols = st.columns(min(len(wh_sea),4))
+            whs_cols = st.columns(min(len(wh_sea),5))
             for i,row in enumerate(wh_sea.itertuples()):
                 if i < len(whs_cols):
                     with whs_cols[i]:
