@@ -82,12 +82,16 @@ div[data-testid="stDataFrame"] * { color:#1a0030 !important; font-size:.84rem !i
 import re
 MONTH_MAP = {
     'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,'june':6,
-    'jul':7,'july':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12,'march':3
+    'jul':7,'july':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12,
+    'march':3,'april':4,'august':8,'september':9,'october':10,
+    'november':11,'december':12,'january':1,'february':2
 }
 MONTH_SHORT_MAP = {
     'jan':'Jan','feb':'Feb','mar':'Mar','apr':'Apr','may':'May','jun':'Jun',
     'june':'Jun','jul':'Jul','july':'Jul','aug':'Aug','sep':'Sep',
-    'oct':'Oct','nov':'Nov','dec':'Dec','march':'Mar'
+    'oct':'Oct','nov':'Nov','dec':'Dec','march':'Mar','april':'Apr',
+    'august':'Aug','september':'Sep','october':'Oct','november':'Nov',
+    'december':'Dec','january':'Jan','february':'Feb'
 }
 
 def parse_month_order(months_series):
@@ -284,7 +288,6 @@ def process_store(file_bytes):
     wh['Category'] = wh['Category'].astype(str).str.upper().str.strip() if 'Category' in wh.columns else 'N/A'
     wh['ItemName'] = wh['ItemName'].astype(str).str.strip() if 'ItemName' in wh.columns else 'N/A'
     wh['GodownName'] = wh['GodownName'].astype(str).str.strip() if 'GodownName' in wh.columns else 'N/A'
-    # Remove grand total row (NaN GodownName)
     wh = wh.dropna(subset=['GodownName'])
     wh = wh[wh['GodownName'].str.strip() != 'nan']
     return sale, stock, wh, present_months
@@ -467,21 +470,16 @@ if mode == "store" and st.session_state.store_data:
         if a_srch_s: adf_s = adf_s[adf_s['ItemName'].str.contains(a_srch_s, case=False, na=False)]
         top_arts_s = adf_s.groupby(['ItemID','ItemName'])['NetSale'].sum().sort_values(ascending=False).head(10)
         top_arts_sorted_s = top_arts_s.sort_values(ascending=True)
-        # Build chart title with active filters
         art_title_parts = []
         if a_cat_s: art_title_parts.append(" + ".join(a_cat_s))
         if a_div_s: art_title_parts.append(" + ".join(a_div_s))
         art_chart_title = "Top 10 Articles by Net Sale"
         if art_title_parts: art_chart_title += f" — {' > '.join(art_title_parts)}"
-
         sec("🏆 Top 10 Articles by Net Sale")
         if len(top_arts_sorted_s)>0:
-            # Full item name + item ID
             y_labels = [f"{idx[1][:35]} [{idx[0]}]" for idx in top_arts_sorted_s.index]
             fig_art_s = go.Figure(go.Bar(
-                x=top_arts_sorted_s.values,
-                y=y_labels,
-                orientation='h',
+                x=top_arts_sorted_s.values, y=y_labels, orientation='h',
                 marker=dict(color=top_arts_sorted_s.values, colorscale=BLUE_SEQ, line=dict(width=0)),
                 text=[f"₹{fmt_inr(int(v))}" for v in top_arts_sorted_s.values],
                 textposition='outside', textfont=dict(size=11,color='#1a0030')))
@@ -540,16 +538,11 @@ if mode == "store" and st.session_state.store_data:
         if s_div_s: sdf_s = sdf_s[sdf_s['DivisionDesc'].isin(s_div_s)]
         all_sz_s = sdf_s['Size'].dropna().unique().tolist()
         ord_sz_s = [s for s in SIZE_ORDER_S if s in all_sz_s] + [s for s in all_sz_s if s not in SIZE_ORDER_S]
-
-        # Build chart title with active filters
         sz_title_parts = []
         if s_cat_s: sz_title_parts.append(" + ".join(s_cat_s))
         if s_div_s: sz_title_parts.append(" + ".join(s_div_s))
         sz_filter_label = " > ".join(sz_title_parts) if sz_title_parts else "All"
-
         sa_s,sb_s = st.columns(2)
-
-        # If multiple divisions selected — grouped bar by division
         active_divs_s = sdf_s['DivisionDesc'].dropna().unique().tolist()
         if len(active_divs_s) > 1:
             with sa_s:
@@ -557,8 +550,7 @@ if mode == "store" and st.session_state.store_data:
                 for i,div in enumerate(sorted(active_divs_s)):
                     ddf = sdf_s[sdf_s['DivisionDesc']==div]
                     dv = ddf.groupby('Size')['NetSale'].sum().reindex(ord_sz_s).fillna(0)
-                    fig_szs_s.add_trace(go.Bar(
-                        name=div, x=ord_sz_s, y=dv.values,
+                    fig_szs_s.add_trace(go.Bar(name=div, x=ord_sz_s, y=dv.values,
                         marker_color=CAT_COLORS[i%len(CAT_COLORS)],
                         text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in dv.values],
                         textposition='outside', textfont=dict(size=9,color='#1a0030')))
@@ -570,8 +562,7 @@ if mode == "store" and st.session_state.store_data:
                 for i,div in enumerate(sorted(active_divs_s)):
                     ddf = sdf_s[sdf_s['DivisionDesc']==div]
                     dq = ddf.groupby('Size')['SaleQty'].sum().reindex(ord_sz_s).fillna(0)
-                    fig_szq_s.add_trace(go.Bar(
-                        name=div, x=ord_sz_s, y=dq.values,
+                    fig_szq_s.add_trace(go.Bar(name=div, x=ord_sz_s, y=dq.values,
                         marker_color=CAT_COLORS[i%len(CAT_COLORS)],
                         text=[f"{int(v)} Pcs" if v>0 else "" for v in dq.values],
                         textposition='outside', textfont=dict(size=9,color='#1a0030')))
@@ -731,7 +722,6 @@ if mode == "store" and st.session_state.store_data:
             kpi(wh2,"Total MRP Value", f"₹{fmt_inr(int(wh_total_val))}", "Closing stock", "💰")
             kpi(wh3,"Total Godowns",   str(wh_s['GodownName'].nunique()), "Active godowns", "🏭")
             st.markdown("<br>", unsafe_allow_html=True)
-
             sec("🏭 Godown-wise Stock")
             gd_s = wh_s.groupby('GodownName').agg(
                 ClosingQty=('ClosingQty','sum'), ClosingValueMRP=('ClosingValueMRP','sum')
@@ -757,7 +747,6 @@ if mode == "store" and st.session_state.store_data:
                 fig_gdq_s.update_layout(**cl(360,"Godown-wise Stock Qty",margin=dict(l=10,r=100,t=55,b=40)),
                     xaxis_range=[0,gd_s['ClosingQty'].max()*1.35])
                 st.plotly_chart(fig_gdq_s, use_container_width=True)
-
             sec("🗓️ Season-wise Warehouse Stock")
             wh_sea = wh_s.groupby('Season').agg(
                 ClosingQty=('ClosingQty','sum'), ClosingValueMRP=('ClosingValueMRP','sum')
@@ -772,7 +761,6 @@ if mode == "store" and st.session_state.store_data:
                             <div style="font-size:.72rem;color:rgba(255,255,255,.7)">{int(row.ClosingQty):,} Pcs</div>
                         </div>''', unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
-
             sec("🏷️ Top 10 Articles by WH Stock")
             wh_arts = wh_s.groupby(['ItemID','ItemName'])['ClosingQty'].sum().sort_values(ascending=False).head(10)
             wh_arts_sorted = wh_arts.sort_values(ascending=True)
@@ -787,17 +775,12 @@ if mode == "store" and st.session_state.store_data:
                 fig_wart_s.update_layout(**cl(420,"Top 10 Articles by WH Stock Qty",margin=dict(l=10,r=100,t=55,b=40)),
                     xaxis_range=[0,wh_arts_sorted.max()*1.4])
                 st.plotly_chart(fig_wart_s, use_container_width=True)
-
-            # ══ SIZE-WISE WH — FOOTWEAR + CLOTHING ALAG ══
             FOOTWEAR_SIZES = ['6','7','8','9','10','11','12']
             CLOTHING_SIZES = ['XS','S','M','L','XL','XXL','XXXL','2XL','3XL','STANDARD']
-
             wh_foot  = wh_s[wh_s['Size'].isin(FOOTWEAR_SIZES)]
             wh_cloth = wh_s[wh_s['Size'].isin(CLOTHING_SIZES)]
-
             foot_sizes  = [s for s in FOOTWEAR_SIZES if s in wh_foot['Size'].unique()]
             cloth_sizes = [s for s in CLOTHING_SIZES if s in wh_cloth['Size'].unique()]
-
             if foot_sizes:
                 sec("👟 Footwear Size-wise Warehouse Stock")
                 foot_qty = wh_foot.groupby('Size')['ClosingQty'].sum().reindex(foot_sizes).fillna(0)
@@ -806,18 +789,15 @@ if mode == "store" and st.session_state.store_data:
                 with wha_s:
                     fig_wsz_s = go.Figure(go.Bar(x=foot_sizes, y=foot_qty.values,
                         marker=dict(color=foot_qty.values, colorscale=BLUE_SEQ, line=dict(width=0)),
-                        text=[str(int(v)) if v>0 else "" for v in foot_qty.values],
-                        textposition='outside'))
+                        text=[str(int(v)) if v>0 else "" for v in foot_qty.values], textposition='outside'))
                     fig_wsz_s.update_layout(**cl(320,"Footwear Size-wise WH Stock Qty",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
                     st.plotly_chart(fig_wsz_s, use_container_width=True)
                 with whb_s:
                     fig_wsv_s = go.Figure(go.Bar(x=foot_sizes, y=foot_val.values,
                         marker=dict(color=foot_val.values, colorscale=[[0,'#fce7f3'],[0.5,'#ec4899'],[1,'#9d174d']], line=dict(width=0)),
-                        text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in foot_val.values],
-                        textposition='outside'))
+                        text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in foot_val.values], textposition='outside'))
                     fig_wsv_s.update_layout(**cl(320,"Footwear Size-wise WH Stock Value",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
                     st.plotly_chart(fig_wsv_s, use_container_width=True)
-
             if cloth_sizes:
                 sec("👕 Clothing Size-wise Warehouse Stock")
                 cloth_qty = wh_cloth.groupby('Size')['ClosingQty'].sum().reindex(cloth_sizes).fillna(0)
@@ -826,18 +806,15 @@ if mode == "store" and st.session_state.store_data:
                 with whc_s:
                     fig_wcz_s = go.Figure(go.Bar(x=cloth_sizes, y=cloth_qty.values,
                         marker=dict(color=cloth_qty.values, colorscale=BLUE_SEQ, line=dict(width=0)),
-                        text=[str(int(v)) if v>0 else "" for v in cloth_qty.values],
-                        textposition='outside'))
+                        text=[str(int(v)) if v>0 else "" for v in cloth_qty.values], textposition='outside'))
                     fig_wcz_s.update_layout(**cl(320,"Clothing Size-wise WH Stock Qty",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
                     st.plotly_chart(fig_wcz_s, use_container_width=True)
                 with whd_s:
                     fig_wcv_s = go.Figure(go.Bar(x=cloth_sizes, y=cloth_val.values,
                         marker=dict(color=cloth_val.values, colorscale=[[0,'#fce7f3'],[0.5,'#ec4899'],[1,'#9d174d']], line=dict(width=0)),
-                        text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in cloth_val.values],
-                        textposition='outside'))
+                        text=[f"₹{fmt_inr(int(v))}" if v>0 else "" for v in cloth_val.values], textposition='outside'))
                     fig_wcv_s.update_layout(**cl(320,"Clothing Size-wise WH Stock Value",margin=dict(l=10,r=10,t=55,b=40)),bargap=0.3)
                     st.plotly_chart(fig_wcv_s, use_container_width=True)
-
             sec("📋 Warehouse Stock Detail Table")
             wh_tbl_s = wh_s.groupby(['GodownName','ItemID','ItemName','Category','Gender','Size','Color','Season']).agg(
                 ClosingQty=('ClosingQty','sum'), ClosingValueMRP=('ClosingValueMRP','sum')
@@ -922,7 +899,9 @@ if mode == "store" and st.session_state.store_data:
 
     st.stop()
 
-# Channel mode continues below
+# ══════════════════════════════════════════
+# CHANNEL MODE
+# ══════════════════════════════════════════
 df, MONTHS_ORDER, MONTH_SHORT = st.session_state.data
 mode = st.session_state.mode
 
@@ -1157,8 +1136,7 @@ with t5:
         fig_art = go.Figure(go.Bar(
             x=vals, y=labs, orientation='h',
             marker=dict(color=vals, colorscale=BLUE_SEQ, line=dict(width=0)),
-            text=texts, textposition='outside',
-            textfont=dict(size=11, color='#1a0030')))
+            text=texts, textposition='outside', textfont=dict(size=11, color='#1a0030')))
         fig_art.update_layout(
             paper_bgcolor="rgba(255,255,255,1)", plot_bgcolor="rgba(245,240,255,0.5)",
             font=dict(color="#1a0030", family="Inter", size=12),
