@@ -951,27 +951,31 @@ if mode == "store" and st.session_state.store_data:
         cs1, cs2 = st.columns(2)
         with cs1:
             sec("🟢 Top 5 Styles")
+            top_max = float(top5_style['NetSale'].max()) if top5_style['NetSale'].max()>0 else 1
+            top_vals = [max(float(v), top_max*0.05) for v in top5_style['NetSale'].values]
             fig_ts = go.Figure(go.Bar(
-                x=top5_style['NetSale'].values,
+                x=top_vals,
                 y=[r.ItemName[:22] for r in top5_style.itertuples()],
                 orientation='h',
                 marker=dict(color='#16a34a', line=dict(width=0)),
                 text=[f"₹{fmt_inr(int(v))}" for v in top5_style['NetSale'].values],
                 textposition='outside', textfont=dict(size=10,color='#1a0030')))
-            fig_ts.update_layout(**cl(280,"Top 5 Styles",margin=dict(l=10,r=160,t=40,b=20)),
-                xaxis_range=[0, top5_style['NetSale'].max()*1.45])
+            fig_ts.update_layout(**cl(300,"Top 5 Styles",margin=dict(l=10,r=160,t=40,b=20)),
+                xaxis_range=[0, top_max*1.8])
             st.plotly_chart(fig_ts, use_container_width=True)
         with cs2:
             sec("🔴 Bottom 5 Styles")
+            bot_max_s = float(bot5_style['NetSale'].abs().max()) if bot5_style['NetSale'].abs().max()>0 else 1
+            bot_vals_s = [max(float(abs(v)), bot_max_s*0.05) for v in bot5_style['NetSale'].values]
             fig_bs = go.Figure(go.Bar(
-                x=bot5_style['NetSale'].values,
+                x=bot_vals_s,
                 y=[r.ItemName[:22] for r in bot5_style.itertuples()],
                 orientation='h',
                 marker=dict(color='#dc2626', line=dict(width=0)),
                 text=[f"₹{fmt_inr(int(v))}" for v in bot5_style['NetSale'].values],
                 textposition='outside', textfont=dict(size=10,color='#1a0030')))
-            fig_bs.update_layout(**cl(280,"Bottom 5 Styles",margin=dict(l=10,r=160,t=40,b=20)),
-                xaxis_range=[0, max(bot5_style['NetSale'].max()*1.45,1)])
+            fig_bs.update_layout(**cl(300,"Bottom 5 Styles",margin=dict(l=10,r=160,t=40,b=20)),
+                xaxis_range=[0, bot_max_s*1.8])
             st.plotly_chart(fig_bs, use_container_width=True)
 
         st.markdown("---")
