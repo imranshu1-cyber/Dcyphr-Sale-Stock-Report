@@ -1158,6 +1158,10 @@ if mode == "store" and st.session_state.store_data:
         sec("🏪 Store-wise Sell Through")
         store_sale_st = sale_s.groupby('StoreName')['NetSale'].sum()
         store_stk_st  = stock_s.groupby('StoreName')['ClosingValue'].sum() if 'ClosingValue' in stock_s.columns else pd.Series(dtype=float)
+        def safe_inr(v):
+            if v == 0: return "₹0"
+            if v < 0: return f"-₹{fmt_inr(int(abs(v)))}"
+            return f"₹{fmt_inr(int(v))}"
         store_st_data = []
         # Use only sale stores — not union (avoids SS-ALIGANJ stock-only store)
         for s in sorted(store_sale_st.index):
@@ -1174,10 +1178,6 @@ if mode == "store" and st.session_state.store_data:
             else:
                 st_pct_str = "N/A"
                 status_str = "⚪ N/A"
-            def safe_inr(v):
-                if v == 0: return "₹0"
-                if v < 0: return f"-₹{fmt_inr(int(abs(v)))}"
-                return f"₹{fmt_inr(int(v))}"
             store_st_data.append({
                 'Store': s[:35],
                 'Net Sale': safe_inr(sv),
@@ -1322,15 +1322,30 @@ if mode == "store" and st.session_state.store_data:
         # White bars need border to be visible
         border_colors = ['#999999' if str(c).upper() in ['WHITE','OFF-WHITE','IVORY','IVORY MIST','CREAM','LIGHT GREY'] else 'rgba(0,0,0,0)' for c in col_fr.index]
         col_total_fr = col_fr.sum()
-        col_pct_fr = [f"{v} pcs ({v/col_total_fr*100:.1f}%)" for v in col_fr.values]
+        col_pct_fr = [f"{int(v)} pcs ({v/col_total_fr*100:.1f}%)" for v in col_fr.values]
+        # Horizontal bar — easier to read colour names + values
+        col_sorted = col_fr.sort_values(ascending=True)
+        bar_colors_h = []
+        border_colors_h = []
+        for c in col_sorted.index:
+            matched = None
+            cu = str(c).upper().strip()
+            for k, v in COLOR_MAP.items():
+                if k in cu or cu in k:
+                    matched = v
+                    break
+            bar_colors_h.append(matched if matched else CAT_COLORS[len(bar_colors_h) % len(CAT_COLORS)])
+            border_colors_h.append('#999999' if str(c).upper() in ['WHITE','OFF-WHITE','IVORY','IVORY MIST','CREAM','LIGHT GREY'] else 'rgba(0,0,0,0)')
+        col_texts_h = [f"{int(v)} pcs ({v/col_total_fr*100:.1f}%)" for v in col_sorted.values]
         fig_col_fr = go.Figure(go.Bar(
-            x=col_fr.index.tolist(), y=col_fr.values,
-            marker=dict(color=bar_colors, line=dict(color=border_colors, width=1.5)),
-            text=col_pct_fr,
+            x=col_sorted.values,
+            y=[str(c)[:20] for c in col_sorted.index],
+            orientation='h',
+            marker=dict(color=bar_colors_h, line=dict(color=border_colors_h, width=1.5)),
+            text=col_texts_h,
             textposition='outside', textfont=dict(size=9,color='#1a0030')))
-        fig_col_fr.update_layout(**cl(320,"Top 10 Colours by Sale Qty",margin=dict(l=10,r=10,t=40,b=70)),
-            bargap=0.3, xaxis_tickangle=-30,
-            yaxis_range=[0, col_fr.max()*1.35])
+        fig_col_fr.update_layout(**cl(380,"Top 10 Colours by Sale Qty",margin=dict(l=10,r=200,t=40,b=20)),
+            bargap=0.25, xaxis_range=[0, col_sorted.max()*1.6])
         st.plotly_chart(fig_col_fr, use_container_width=True)
 
 
