@@ -1031,7 +1031,7 @@ if mode == "store" and st.session_state.store_data:
                 'Month': m,
                 'Net Sale': f"₹{fmt_inr(int(sale_v))}",
                 'MoM Growth': f"{mom_v:+.1f}%" if mom_v is not None else "—",
-                'Status': ('🟢 Growth' if mom_v and mom_v>0 else ('🔴 Decline' if mom_v and mom_v<0 else '—'))
+                'Status': ('🟢 Growth' if mom_v is not None and mom_v>0 else ('🔴 Decline' if mom_v is not None and mom_v<0 else '—'))
             })
         st.dataframe(pd.DataFrame(mom_data), use_container_width=True, hide_index=True)
 
@@ -1163,13 +1163,22 @@ if mode == "store" and st.session_state.store_data:
             sv = float(store_sale_st.get(s, 0))
             sk = float(store_stk_st.get(s, 0)) if s in store_stk_st.index else 0
             tv = sv + sk
-            st_pct = round(sv/tv*100,1) if tv>0 and sv>0 else 0
+            if sk == 0 and sv > 0:
+                st_pct_str = "N/A"
+                status_str = "⚪ No Stock Data"
+            elif tv > 0 and sv >= 0:
+                st_pct = round(sv/tv*100, 1)
+                st_pct_str = f"{st_pct}%"
+                status_str = '🟢 Good' if st_pct>=60 else ('🟡 Avg' if st_pct>=30 else '🔴 Low')
+            else:
+                st_pct_str = "N/A"
+                status_str = "⚪ N/A"
             store_st_data.append({
                 'Store': s[:35],
                 'Net Sale': f"₹{fmt_inr(int(sv))}",
                 'Closing Stock': f"₹{fmt_inr(int(sk))}",
-                'ST%': f"{st_pct}%",
-                'Status': '🟢 Good' if st_pct>=60 else ('🟡 Avg' if st_pct>=30 else '🔴 Low')
+                'ST%': st_pct_str,
+                'Status': status_str
             })
         store_st_df = pd.DataFrame(store_st_data).sort_values('ST%', ascending=False)
         st.dataframe(store_st_df, use_container_width=True, hide_index=True)
@@ -1191,14 +1200,18 @@ if mode == "store" and st.session_state.store_data:
 
         fig_gap = go.Figure()
         fig_gap.add_trace(go.Bar(
-            name='Net Sale',
-            x=[top_store_nm[:25], bot_store_nm[:25]],
-            y=[top_store_sale, max(bot_store_sale,0)],
-            marker=dict(color=['#16a34a','#dc2626'], line=dict(width=0)),
-            text=[f"₹{fmt_inr(int(top_store_sale))}", f"₹{fmt_inr(int(bot_store_sale))}"],
+            name='Top Store', x=[top_store_nm[:25]], y=[top_store_sale],
+            marker=dict(color='#16a34a', line=dict(width=0)),
+            text=[f"₹{fmt_inr(int(top_store_sale))}"],
             textposition='outside', textfont=dict(size=12,color='#1a0030')))
-        fig_gap.update_layout(**cl(280,"Top vs Bottom Store Comparison",margin=dict(l=10,r=10,t=55,b=80)),
-            bargap=0.5, yaxis_range=[0, top_store_sale*1.3])
+        fig_gap.add_trace(go.Bar(
+            name='Bottom Store', x=[bot_store_nm[:25]], y=[abs(bot_store_sale)],
+            marker=dict(color='#dc2626', line=dict(width=0)),
+            text=[f"₹{fmt_inr(int(bot_store_sale))}"],
+            textposition='outside', textfont=dict(size=12,color='#1a0030')))
+        fig_gap.update_layout(**cl(300,"Top vs Bottom Store Comparison",margin=dict(l=10,r=10,t=55,b=80)),
+            bargap=0.5, barmode='group',
+            yaxis_range=[0, top_store_sale*1.35])
         st.plotly_chart(fig_gap, use_container_width=True)
 
         st.markdown("---")
