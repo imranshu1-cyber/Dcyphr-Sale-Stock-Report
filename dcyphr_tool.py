@@ -905,37 +905,38 @@ if mode == "store" and st.session_state.store_data:
         st.markdown("### 🏆 Top & Bottom Performing Stores")
         store_perf = sale_s.groupby('StoreName')['NetSale'].sum().reset_index().sort_values('NetSale', ascending=False)
         store_perf['Sale'] = store_perf['NetSale'].apply(lambda x: fmt_inr(int(x)))
-        top5_perf = store_perf.head(5)
-        bot5_perf = store_perf.tail(5).sort_values('NetSale')
+        top10_perf = store_perf.head(10).sort_values('NetSale', ascending=True)
+        bot10_perf = store_perf.tail(10).sort_values('NetSale', ascending=False)
 
         col_top, col_bot = st.columns(2)
         with col_top:
-            sec("🟢 Top 5 Stores")
+            sec("🟢 Top 10 Stores")
+            top_max = float(top10_perf['NetSale'].max()) if top10_perf['NetSale'].max()>0 else 1
+            top_vals = [max(float(v), top_max*0.05) for v in top10_perf['NetSale'].values]
             fig_top = go.Figure(go.Bar(
-                x=top5_perf['NetSale'].values,
-                y=[s[:25] for s in top5_perf['StoreName'].tolist()],
+                x=top_vals,
+                y=[s[:25] for s in top10_perf['StoreName'].tolist()],
                 orientation='h',
                 marker=dict(color='#16a34a', line=dict(width=0)),
-                text=[f"₹{fmt_inr(int(v))}" for v in top5_perf['NetSale'].values],
+                text=[f"₹{fmt_inr(int(v))}" for v in top10_perf['NetSale'].values],
                 textposition='outside', textfont=dict(size=10,color='#1a0030')))
-            fig_top.update_layout(**cl(280,"Top 5 Stores",margin=dict(l=10,r=160,t=40,b=20)),
-                xaxis_range=[0, top5_perf['NetSale'].max()*1.45])
+            fig_top.update_layout(**cl(420,"Top 10 Stores",margin=dict(l=10,r=160,t=40,b=20)),
+                xaxis_range=[0, top_max*1.8])
             st.plotly_chart(fig_top, use_container_width=True)
         with col_bot:
-            sec("🔴 Bottom 5 Stores")
-            bot_max = float(bot5_perf['NetSale'].max()) if bot5_perf['NetSale'].max()>0 else 1
-            # Ensure minimum bar value so all bars are visible
-            bot_vals = [max(float(v), bot_max*0.05) for v in bot5_perf['NetSale'].values]
-            bot_texts = [f"₹{fmt_inr(int(v))}" for v in bot5_perf['NetSale'].values]
+            sec("🔴 Bottom 10 Stores")
+            bot_abs_max = float(bot10_perf['NetSale'].abs().max()) if bot10_perf['NetSale'].abs().max()>0 else 1
+            bot_vals = [max(float(abs(v)), bot_abs_max*0.08) for v in bot10_perf['NetSale'].values]
+            bot_texts = [f"₹{fmt_inr(int(v))}" if abs(v)>=1 else "₹0" for v in bot10_perf['NetSale'].values]
             fig_bot = go.Figure(go.Bar(
                 x=bot_vals,
-                y=[s[:25] for s in bot5_perf['StoreName'].tolist()],
+                y=[s[:25] for s in bot10_perf['StoreName'].tolist()],
                 orientation='h',
                 marker=dict(color='#dc2626', line=dict(width=0)),
                 text=bot_texts,
                 textposition='outside', textfont=dict(size=10,color='#1a0030')))
-            fig_bot.update_layout(**cl(280,"Bottom 5 Stores",margin=dict(l=10,r=160,t=40,b=20)),
-                xaxis_range=[0, bot_max*1.8])
+            fig_bot.update_layout(**cl(420,"Bottom 10 Stores",margin=dict(l=10,r=160,t=40,b=20)),
+                xaxis_range=[0, bot_abs_max*1.8])
             st.plotly_chart(fig_bot, use_container_width=True)
 
         st.markdown("---")
@@ -946,8 +947,10 @@ if mode == "store" and st.session_state.store_data:
         style_perf = sale_s.groupby('ItemName').agg(
             NetSale=('NetSale','sum'), Qty=('SaleQty','sum')
         ).reset_index().sort_values('NetSale', ascending=False)
-        top10_style = style_perf.head(10)
-        bot10_style = style_perf.tail(10).sort_values('NetSale')
+        # Top 10 — highest on top
+        top10_style = style_perf.head(10).sort_values('NetSale', ascending=True)
+        # Bottom 10 — lowest on top
+        bot10_style = style_perf.tail(10).sort_values('NetSale', ascending=False)
 
         cs1, cs2 = st.columns(2)
         with cs1:
