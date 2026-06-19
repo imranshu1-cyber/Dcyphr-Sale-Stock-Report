@@ -923,16 +923,19 @@ if mode == "store" and st.session_state.store_data:
             st.plotly_chart(fig_top, use_container_width=True)
         with col_bot:
             sec("🔴 Bottom 5 Stores")
+            bot_max = float(bot5_perf['NetSale'].max()) if bot5_perf['NetSale'].max()>0 else 1
+            # Ensure minimum bar value so all bars are visible
+            bot_vals = [max(float(v), bot_max*0.05) for v in bot5_perf['NetSale'].values]
+            bot_texts = [f"₹{fmt_inr(int(v))}" for v in bot5_perf['NetSale'].values]
             fig_bot = go.Figure(go.Bar(
-                x=bot5_perf['NetSale'].values,
+                x=bot_vals,
                 y=[s[:25] for s in bot5_perf['StoreName'].tolist()],
                 orientation='h',
                 marker=dict(color='#dc2626', line=dict(width=0)),
-                text=[f"₹{fmt_inr(int(v))}" for v in bot5_perf['NetSale'].values],
-                textposition='auto', textfont=dict(size=10,color='#ffffff')))
-            bot_max = bot5_perf['NetSale'].max() if bot5_perf['NetSale'].max()>0 else 1
-            fig_bot.update_layout(**cl(280,"Bottom 5 Stores",margin=dict(l=10,r=80,t=40,b=20)),
-                xaxis_range=[0, bot_max*1.6])
+                text=bot_texts,
+                textposition='outside', textfont=dict(size=10,color='#1a0030')))
+            fig_bot.update_layout(**cl(280,"Bottom 5 Stores",margin=dict(l=10,r=160,t=40,b=20)),
+                xaxis_range=[0, bot_max*1.8])
             st.plotly_chart(fig_bot, use_container_width=True)
 
         st.markdown("---")
