@@ -1154,18 +1154,36 @@ if mode == "store" and st.session_state.store_data:
             st.plotly_chart(fig_cat_fr, use_container_width=True)
 
         sec("📐 Size Preference (Buyer Profile)")
-        SIZE_ORDER_FR = ['XS','S','M','L','XL','XXL','XXXL','2XL','3XL','STANDARD']
-        all_sz_fr = sale_s['Size'].dropna().unique().tolist()
-        ord_sz_fr = [s for s in SIZE_ORDER_FR if s in all_sz_fr] + [s for s in all_sz_fr if s not in SIZE_ORDER_FR]
-        sz_qty_fr = sale_s_cp.groupby('Size')['SaleQty'].sum().reindex(ord_sz_fr).fillna(0)
-        fig_sz_fr = go.Figure(go.Bar(
-            x=ord_sz_fr, y=sz_qty_fr.values,
-            marker=dict(color=sz_qty_fr.values, colorscale=BLUE_SEQ, line=dict(width=0)),
-            text=[str(int(v)) if v>0 else "" for v in sz_qty_fr.values],
-            textposition='outside', textfont=dict(size=11,color='#1a0030')))
-        fig_sz_fr.update_layout(**cl(280,"Size-wise Qty Sold",margin=dict(l=10,r=10,t=40,b=40)),
-            bargap=0.3, yaxis_range=[0, max(sz_qty_fr.max()*1.25,1)])
-        st.plotly_chart(fig_sz_fr, use_container_width=True)
+        # Clothing and footwear sizes separate
+        CLOTHING_SZ_FR = ['XS','S','M','L','XL','XXL','XXXL','2XL','3XL','STANDARD']
+        FOOTWEAR_SZ_FR = ['6','7','8','9','10','11','12']
+        all_sz_fr = sale_s_cp['Size'].dropna().unique().tolist()
+        cloth_sz_fr = [s for s in CLOTHING_SZ_FR if s in all_sz_fr]
+        foot_sz_fr  = [s for s in FOOTWEAR_SZ_FR if s in all_sz_fr]
+
+        sz_fa, sz_fb = st.columns(2)
+        if cloth_sz_fr:
+            cloth_qty_fr = sale_s_cp.groupby('Size')['SaleQty'].sum().reindex(cloth_sz_fr).fillna(0)
+            with sz_fa:
+                fig_sz_cl = go.Figure(go.Bar(
+                    x=cloth_sz_fr, y=cloth_qty_fr.values,
+                    marker=dict(color=cloth_qty_fr.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+                    text=[str(int(v)) if v>0 else "" for v in cloth_qty_fr.values],
+                    textposition='outside', textfont=dict(size=11,color='#1a0030')))
+                fig_sz_cl.update_layout(**cl(280,"👕 Clothing Size-wise Qty",margin=dict(l=10,r=10,t=40,b=40)),
+                    bargap=0.3, yaxis_range=[0, max(cloth_qty_fr.max()*1.25,1)])
+                st.plotly_chart(fig_sz_cl, use_container_width=True)
+        if foot_sz_fr:
+            foot_qty_fr = sale_s_cp.groupby('Size')['SaleQty'].sum().reindex(foot_sz_fr).fillna(0)
+            with sz_fb:
+                fig_sz_ft = go.Figure(go.Bar(
+                    x=foot_sz_fr, y=foot_qty_fr.values,
+                    marker=dict(color=foot_qty_fr.values, colorscale=[[0,'#fce7f3'],[0.5,'#ec4899'],[1,'#9d174d']], line=dict(width=0)),
+                    text=[str(int(v)) if v>0 else "" for v in foot_qty_fr.values],
+                    textposition='outside', textfont=dict(size=11,color='#1a0030')))
+                fig_sz_ft.update_layout(**cl(280,"👟 Footwear Size-wise Qty",margin=dict(l=10,r=10,t=40,b=40)),
+                    bargap=0.3, yaxis_range=[0, max(foot_qty_fr.max()*1.25,1)])
+                st.plotly_chart(fig_sz_ft, use_container_width=True)
 
         sec("🎨 Colour Preference")
         col_fr = sale_s_cp.groupby('Color')['SaleQty'].sum().sort_values(ascending=False).head(10)
