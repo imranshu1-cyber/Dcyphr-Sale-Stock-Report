@@ -1125,10 +1125,14 @@ if mode == "store" and st.session_state.store_data:
 
         # 6. CUSTOMER PROFILING
         st.markdown("### 👤 Customer Profiling & Demographics")
+        # Merge ACTIVEWEAR / ACTIVE WEAR duplicates
+        sale_s_cp = sale_s.copy()
+        sale_s_cp['Category'] = sale_s_cp['Category'].str.strip().str.replace(r'\s+', ' ', regex=True).str.upper()
+        sale_s_cp['Category'] = sale_s_cp['Category'].replace({'ACTIVE WEAR': 'ACTIVEWEAR'})
         cp1, cp2 = st.columns(2)
         with cp1:
             sec("👤 Gender Split")
-            gen_fr = sale_s.groupby('Gender')['NetSale'].sum().sort_values(ascending=False)
+            gen_fr = sale_s_cp.groupby('Gender')['NetSale'].sum().sort_values(ascending=False)
             gen_fr = gen_fr[gen_fr>0]
             fig_gen_fr = go.Figure(go.Pie(
                 labels=gen_fr.index.tolist(), values=gen_fr.values.tolist(), hole=0.55,
@@ -1139,7 +1143,7 @@ if mode == "store" and st.session_state.store_data:
             st.plotly_chart(fig_gen_fr, use_container_width=True)
         with cp2:
             sec("🗂️ Category Preference")
-            cat_fr = sale_s.groupby('Category')['NetSale'].sum().sort_values(ascending=False)
+            cat_fr = sale_s_cp.groupby('Category')['NetSale'].sum().sort_values(ascending=False)
             cat_fr = cat_fr[cat_fr>0]
             fig_cat_fr = go.Figure(go.Pie(
                 labels=cat_fr.index.tolist(), values=cat_fr.values.tolist(), hole=0.55,
@@ -1153,7 +1157,7 @@ if mode == "store" and st.session_state.store_data:
         SIZE_ORDER_FR = ['XS','S','M','L','XL','XXL','XXXL','2XL','3XL','STANDARD']
         all_sz_fr = sale_s['Size'].dropna().unique().tolist()
         ord_sz_fr = [s for s in SIZE_ORDER_FR if s in all_sz_fr] + [s for s in all_sz_fr if s not in SIZE_ORDER_FR]
-        sz_qty_fr = sale_s.groupby('Size')['SaleQty'].sum().reindex(ord_sz_fr).fillna(0)
+        sz_qty_fr = sale_s_cp.groupby('Size')['SaleQty'].sum().reindex(ord_sz_fr).fillna(0)
         fig_sz_fr = go.Figure(go.Bar(
             x=ord_sz_fr, y=sz_qty_fr.values,
             marker=dict(color=sz_qty_fr.values, colorscale=BLUE_SEQ, line=dict(width=0)),
@@ -1164,7 +1168,7 @@ if mode == "store" and st.session_state.store_data:
         st.plotly_chart(fig_sz_fr, use_container_width=True)
 
         sec("🎨 Colour Preference")
-        col_fr = sale_s.groupby('Color')['SaleQty'].sum().sort_values(ascending=False).head(10)
+        col_fr = sale_s_cp.groupby('Color')['SaleQty'].sum().sort_values(ascending=False).head(10)
         fig_col_fr = go.Figure(go.Bar(
             x=col_fr.index.tolist(), y=col_fr.values,
             marker=dict(color=CAT_COLORS[:len(col_fr)], line=dict(width=0)),
