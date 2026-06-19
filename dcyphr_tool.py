@@ -1194,13 +1194,39 @@ if mode == "store" and st.session_state.store_data:
 
         sec("🎨 Colour Preference")
         col_fr = sale_s_cp.groupby('Color')['SaleQty'].sum().sort_values(ascending=False).head(10)
+        # Map colour names to actual colors
+        COLOR_MAP = {
+            'BLACK': '#1a1a1a', 'WHITE': '#f5f5f5', 'IVORY MIST': '#f5f0e0',
+            'IVORY': '#fffff0', 'OFF-WHITE': '#faf0e6', 'CREAM': '#fffdd0',
+            'CHARCOAL': '#36454f', 'DARK NIGHT': '#1a237e', 'NAVY': '#000080',
+            'DARK GREY': '#555555', 'GREY': '#808080', 'LIGHT GREY': '#d3d3d3',
+            'BURNT ORANGE': '#cc5500', 'ORANGE': '#ff6600', 'RED': '#cc0000',
+            'DARK RED': '#8b0000', 'MAROON': '#800000', 'BLUE': '#0000ff',
+            'DARK BLUE': '#00008b', 'ROYAL BLUE': '#4169e1', 'SKY BLUE': '#87ceeb',
+            'GREEN': '#008000', 'DARK GREEN': '#006400', 'OLIVE': '#808000',
+            'ICE GREEN': '#a8e6cf', 'MINT': '#98ff98', 'TEAL': '#008080',
+            'YELLOW': '#ffd700', 'MUSTARD': '#ffdb58', 'PINK': '#ff69b4',
+            'PURPLE': '#800080', 'WINE': '#722f37', 'BROWN': '#8b4513',
+            'BEIGE': '#f5f5dc', 'CAMEL': '#c19a6b', 'TAN': '#d2b48c',
+        }
+        bar_colors = []
+        for c in col_fr.index:
+            matched = None
+            cu = str(c).upper().strip()
+            for k, v in COLOR_MAP.items():
+                if k in cu or cu in k:
+                    matched = v
+                    break
+            bar_colors.append(matched if matched else CAT_COLORS[len(bar_colors) % len(CAT_COLORS)])
+        # White bars need border to be visible
+        border_colors = ['#999999' if str(c).upper() in ['WHITE','OFF-WHITE','IVORY','IVORY MIST','CREAM','LIGHT GREY'] else 'rgba(0,0,0,0)' for c in col_fr.index]
         fig_col_fr = go.Figure(go.Bar(
             x=col_fr.index.tolist(), y=col_fr.values,
-            marker=dict(color=CAT_COLORS[:len(col_fr)], line=dict(width=0)),
+            marker=dict(color=bar_colors, line=dict(color=border_colors, width=1.5)),
             text=[str(int(v)) for v in col_fr.values],
             textposition='outside', textfont=dict(size=10,color='#1a0030')))
-        fig_col_fr.update_layout(**cl(280,"Top 10 Colours by Qty",margin=dict(l=10,r=10,t=40,b=70)),
-            bargap=0.3, xaxis_tickangle=-30)
+        fig_col_fr.update_layout(**cl(300,"Top 10 Colours by Sale Qty",margin=dict(l=10,r=10,t=40,b=70)),
+            bargap=0.3, xaxis_tickangle=-30, yaxis_range=[0, col_fr.max()*1.25])
         st.plotly_chart(fig_col_fr, use_container_width=True)
 
 
