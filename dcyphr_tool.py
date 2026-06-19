@@ -1335,7 +1335,7 @@ if mode == "store" and st.session_state.store_data:
                     matched = v
                     break
             bar_colors_h.append(matched if matched else CAT_COLORS[len(bar_colors_h) % len(CAT_COLORS)])
-            border_colors_h.append('#999999' if str(c).upper() in ['WHITE','OFF-WHITE','IVORY','IVORY MIST','CREAM','LIGHT GREY'] else 'rgba(0,0,0,0)')
+            border_colors_h.append('#666666' if str(c).upper() in ['WHITE','OFF-WHITE','IVORY','IVORY MIST','CREAM','LIGHT GREY'] else 'rgba(0,0,0,0)')
         col_texts_h = [f"{int(v)} pcs ({v/col_total_fr*100:.1f}%)" for v in col_sorted.values]
         fig_col_fr = go.Figure(go.Bar(
             x=col_sorted.values,
