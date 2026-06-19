@@ -708,7 +708,9 @@ if mode == "store" and st.session_state.store_data:
             sk_v = float(store_stock_t.get(s,0))
             t_v  = sv_v + sk_v
             st_r = round(sv_v/t_v*100,1) if t_v>0 else 0
-            str_data_s.append({'Store':s,'Sale':f"₹{fmt_inr(int(sv_v))}",'Stock':f"₹{fmt_inr(int(sk_v))}",
+            sale_disp = f"₹{fmt_inr(int(sv_v))}" if sv_v != 0 else "₹0"
+            stk_disp  = f"₹{fmt_inr(int(sk_v))}" if sk_v != 0 else "₹0"
+            str_data_s.append({'Store':s,'Sale':sale_disp,'Stock':stk_disp,
                 'ST%':f"{st_r}%",'Status':'🟢 Good' if st_r>=60 else ('🟡 Avg' if st_r>=30 else '🔴 Low')})
         st.dataframe(pd.DataFrame(str_data_s), use_container_width=True, hide_index=True)
 
