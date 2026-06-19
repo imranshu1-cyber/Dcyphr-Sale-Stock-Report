@@ -942,7 +942,8 @@ if mode == "store" and st.session_state.store_data:
 
         # 2. TOP & BOTTOM STYLES
         st.markdown("### 👕 Top & Bottom Performing Styles")
-        style_perf = sale_s.groupby(['ItemID','ItemName']).agg(
+        # Group by ItemName only (not ItemID) to avoid duplicate styles
+        style_perf = sale_s.groupby('ItemName').agg(
             NetSale=('NetSale','sum'), Qty=('SaleQty','sum')
         ).reset_index().sort_values('NetSale', ascending=False)
         top10_style = style_perf.head(10)
@@ -955,27 +956,33 @@ if mode == "store" and st.session_state.store_data:
             top_vals = [max(float(v), top_max*0.05) for v in top10_style['NetSale'].values]
             fig_ts = go.Figure(go.Bar(
                 x=top_vals,
-                y=[r.ItemName[:28] for r in top10_style.itertuples()],
+                y=[str(n)[:30] for n in top10_style['ItemName'].tolist()],
                 orientation='h',
                 marker=dict(color='#16a34a', line=dict(width=0)),
-                text=[f"₹{fmt_inr(int(v))}" for v in top10_style['NetSale'].values],
+                text=[f"₹{fmt_inr(int(v))}" if v!=0 else "₹0" for v in top10_style['NetSale'].values],
                 textposition='outside', textfont=dict(size=10,color='#1a0030')))
             fig_ts.update_layout(**cl(420,"Top 10 Styles",margin=dict(l=10,r=160,t=40,b=20)),
                 xaxis_range=[0, top_max*1.8])
             st.plotly_chart(fig_ts, use_container_width=True)
         with cs2:
             sec("🔴 Bottom 10 Styles")
-            bot_max_s = float(bot10_style['NetSale'].abs().max()) if bot10_style['NetSale'].abs().max()>0 else 1
-            bot_vals_s = [max(float(abs(v)), bot_max_s*0.05) for v in bot10_style['NetSale'].values]
+            bot_abs_max = float(bot10_style['NetSale'].abs().max()) if bot10_style['NetSale'].abs().max()>0 else 1
+            bot_vals_s = [max(float(abs(v)), bot_abs_max*0.08) for v in bot10_style['NetSale'].values]
+            bot_texts = []
+            for v in bot10_style['NetSale'].values:
+                if abs(v) < 1:
+                    bot_texts.append("₹0")
+                else:
+                    bot_texts.append(f"₹{fmt_inr(int(v))}")
             fig_bs = go.Figure(go.Bar(
                 x=bot_vals_s,
-                y=[r.ItemName[:28] for r in bot10_style.itertuples()],
+                y=[str(n)[:30] for n in bot10_style['ItemName'].tolist()],
                 orientation='h',
                 marker=dict(color='#dc2626', line=dict(width=0)),
-                text=[f"₹{fmt_inr(int(v))}" for v in bot10_style['NetSale'].values],
+                text=bot_texts,
                 textposition='outside', textfont=dict(size=10,color='#1a0030')))
             fig_bs.update_layout(**cl(420,"Bottom 10 Styles",margin=dict(l=10,r=160,t=40,b=20)),
-                xaxis_range=[0, bot_max_s*1.8])
+                xaxis_range=[0, bot_abs_max*1.8])
             st.plotly_chart(fig_bs, use_container_width=True)
 
         st.markdown("---")
