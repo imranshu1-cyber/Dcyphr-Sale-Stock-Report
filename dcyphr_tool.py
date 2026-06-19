@@ -1159,7 +1159,8 @@ if mode == "store" and st.session_state.store_data:
         store_sale_st = sale_s.groupby('StoreName')['NetSale'].sum()
         store_stk_st  = stock_s.groupby('StoreName')['ClosingValue'].sum() if 'ClosingValue' in stock_s.columns else pd.Series(dtype=float)
         store_st_data = []
-        for s in sorted(set(store_sale_st.index) | set(store_stk_st.index)):
+        # Use only sale stores — not union (avoids SS-ALIGANJ stock-only store)
+        for s in sorted(store_sale_st.index):
             sv = float(store_sale_st.get(s, 0))
             sk = float(store_stk_st.get(s, 0)) if s in store_stk_st.index else 0
             tv = sv + sk
@@ -1173,10 +1174,14 @@ if mode == "store" and st.session_state.store_data:
             else:
                 st_pct_str = "N/A"
                 status_str = "⚪ N/A"
+            def safe_inr(v):
+                if v == 0: return "₹0"
+                if v < 0: return f"-₹{fmt_inr(int(abs(v)))}"
+                return f"₹{fmt_inr(int(v))}"
             store_st_data.append({
                 'Store': s[:35],
-                'Net Sale': f"₹{fmt_inr(int(sv))}" if sv!=0 else "₹0",
-                'Closing Stock': f"₹{fmt_inr(int(sk))}" if sk!=0 else "₹0",
+                'Net Sale': safe_inr(sv),
+                'Closing Stock': safe_inr(sk),
                 'ST%': st_pct_str,
                 'Status': status_str
             })
@@ -1194,24 +1199,26 @@ if mode == "store" and st.session_state.store_data:
 
         gp1, gp2, gp3 = st.columns(3)
         kpi(gp1, "Top Store Sale",    f"₹{fmt_inr(int(top_store_sale))}", top_store_nm[:25], "🏆")
-        kpi(gp2, "Bottom Store Sale", f"₹{int(bot_store_sale):,}" if bot_store_sale!=0 else "₹0", bot_store_nm[:25], "⬇️")
+        bot_sale_display = f"-₹{fmt_inr(int(abs(bot_store_sale)))}" if bot_store_sale<0 else f"₹{fmt_inr(int(bot_store_sale))}"
+        kpi(gp2, "Bottom Store Sale", bot_sale_display, bot_store_nm[:25], "⬇️")
         kpi(gp3, "Performance Gap",   f"₹{fmt_inr(int(gap_val))}",        f"Top is {gap_ratio}x of bottom", "📊")
         st.markdown("<br>", unsafe_allow_html=True)
 
-        fig_gap = go.Figure()
-        fig_gap.add_trace(go.Bar(
-            name='Top Store', x=[top_store_nm[:25]], y=[top_store_sale],
-            marker=dict(color='#16a34a', line=dict(width=0)),
-            text=[f"₹{fmt_inr(int(top_store_sale))}"],
+        # Show as horizontal comparison
+        gap_stores = [top_store_nm[:30], bot_store_nm[:30]]
+        gap_vals   = [top_store_sale, abs(bot_store_sale)]
+        gap_colors = ['#16a34a', '#dc2626']
+        gap_texts  = [f"₹{fmt_inr(int(top_store_sale))}", f"₹{fmt_inr(int(bot_store_sale))}"]
+        gap_max    = max(gap_vals) if max(gap_vals) > 0 else 1
+        # Ensure bottom bar visible — min 5% of top
+        gap_vals_vis = [max(float(v), gap_max*0.05) for v in gap_vals]
+        fig_gap = go.Figure(go.Bar(
+            x=gap_vals_vis, y=gap_stores, orientation='h',
+            marker=dict(color=gap_colors, line=dict(width=0)),
+            text=gap_texts,
             textposition='outside', textfont=dict(size=12,color='#1a0030')))
-        fig_gap.add_trace(go.Bar(
-            name='Bottom Store', x=[bot_store_nm[:25]], y=[abs(bot_store_sale)],
-            marker=dict(color='#dc2626', line=dict(width=0)),
-            text=[f"₹{fmt_inr(int(bot_store_sale))}"],
-            textposition='outside', textfont=dict(size=12,color='#1a0030')))
-        fig_gap.update_layout(**cl(300,"Top vs Bottom Store Comparison",margin=dict(l=10,r=10,t=55,b=80)),
-            bargap=0.5, barmode='group',
-            yaxis_range=[0, top_store_sale*1.35])
+        fig_gap.update_layout(**cl(220,"Top vs Bottom Store Comparison",margin=dict(l=10,r=160,t=55,b=20)),
+            bargap=0.4, xaxis_range=[0, gap_max*1.8])
         st.plotly_chart(fig_gap, use_container_width=True)
 
         st.markdown("---")
