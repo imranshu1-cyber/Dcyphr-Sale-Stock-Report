@@ -1145,8 +1145,15 @@ if mode == "store" and st.session_state.store_data:
             sec("🗂️ Category Preference")
             cat_fr = sale_s_cp.groupby('Category')['NetSale'].sum().sort_values(ascending=False)
             cat_fr = cat_fr[cat_fr>0]
+            # Force minimum slice size so all categories are visible
+            cat_total = cat_fr.sum()
+            min_slice = cat_total * 0.02  # minimum 2% visual size
+            cat_vals_vis = [max(float(v), min_slice) for v in cat_fr.values]
+            cat_pcts = [f"{v/cat_total*100:.2f}%" for v in cat_fr.values]
+            cat_labels = [f"{l} ({p})" if float(v)/cat_total*100 < 1 else l 
+                         for l,v,p in zip(cat_fr.index, cat_fr.values, cat_pcts)]
             fig_cat_fr = go.Figure(go.Pie(
-                labels=cat_fr.index.tolist(), values=cat_fr.values.tolist(), hole=0.55,
+                labels=cat_labels, values=cat_vals_vis, hole=0.55,
                 marker=dict(colors=CAT_COLORS[:len(cat_fr)], line=dict(color='#fff',width=2)),
                 textinfo='label+percent', textfont=dict(size=11,color='#1a0030'),
                 insidetextfont=dict(size=10,color='#fff')))
@@ -1170,7 +1177,7 @@ if mode == "store" and st.session_state.store_data:
                     marker=dict(color=cloth_qty_fr.values, colorscale=BLUE_SEQ, line=dict(width=0)),
                     text=[str(int(v)) if v>0 else "" for v in cloth_qty_fr.values],
                     textposition='outside', textfont=dict(size=11,color='#1a0030')))
-                fig_sz_cl.update_layout(**cl(280,"👕 Clothing Size-wise Qty",margin=dict(l=10,r=10,t=40,b=40)),
+                fig_sz_cl.update_layout(**cl(280,"👕 Clothing Size-wise Sale Qty",margin=dict(l=10,r=10,t=40,b=40)),
                     bargap=0.3, yaxis_range=[0, max(cloth_qty_fr.max()*1.25,1)])
                 st.plotly_chart(fig_sz_cl, use_container_width=True)
         if foot_sz_fr:
@@ -1181,7 +1188,7 @@ if mode == "store" and st.session_state.store_data:
                     marker=dict(color=foot_qty_fr.values, colorscale=[[0,'#fce7f3'],[0.5,'#ec4899'],[1,'#9d174d']], line=dict(width=0)),
                     text=[str(int(v)) if v>0 else "" for v in foot_qty_fr.values],
                     textposition='outside', textfont=dict(size=11,color='#1a0030')))
-                fig_sz_ft.update_layout(**cl(280,"👟 Footwear Size-wise Qty",margin=dict(l=10,r=10,t=40,b=40)),
+                fig_sz_ft.update_layout(**cl(280,"👟 Footwear Size-wise Sale Qty",margin=dict(l=10,r=10,t=40,b=40)),
                     bargap=0.3, yaxis_range=[0, max(foot_qty_fr.max()*1.25,1)])
                 st.plotly_chart(fig_sz_ft, use_container_width=True)
 
