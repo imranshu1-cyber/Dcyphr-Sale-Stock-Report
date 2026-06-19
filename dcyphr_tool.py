@@ -929,9 +929,10 @@ if mode == "store" and st.session_state.store_data:
                 orientation='h',
                 marker=dict(color='#dc2626', line=dict(width=0)),
                 text=[f"₹{fmt_inr(int(v))}" for v in bot5_perf['NetSale'].values],
-                textposition='outside', textfont=dict(size=10,color='#1a0030')))
-            fig_bot.update_layout(**cl(280,"Bottom 5 Stores",margin=dict(l=10,r=160,t=40,b=20)),
-                xaxis_range=[0, max(bot5_perf['NetSale'].max()*1.45,1)])
+                textposition='auto', textfont=dict(size=10,color='#ffffff')))
+            bot_max = bot5_perf['NetSale'].max() if bot5_perf['NetSale'].max()>0 else 1
+            fig_bot.update_layout(**cl(280,"Bottom 5 Stores",margin=dict(l=10,r=80,t=40,b=20)),
+                xaxis_range=[0, bot_max*1.6])
             st.plotly_chart(fig_bot, use_container_width=True)
 
         st.markdown("---")
