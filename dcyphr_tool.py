@@ -1175,8 +1175,8 @@ if mode == "store" and st.session_state.store_data:
                 status_str = "⚪ N/A"
             store_st_data.append({
                 'Store': s[:35],
-                'Net Sale': f"₹{fmt_inr(int(sv))}",
-                'Closing Stock': f"₹{fmt_inr(int(sk))}",
+                'Net Sale': f"₹{fmt_inr(int(sv))}" if sv!=0 else "₹0",
+                'Closing Stock': f"₹{fmt_inr(int(sk))}" if sk!=0 else "₹0",
                 'ST%': st_pct_str,
                 'Status': status_str
             })
@@ -1194,7 +1194,7 @@ if mode == "store" and st.session_state.store_data:
 
         gp1, gp2, gp3 = st.columns(3)
         kpi(gp1, "Top Store Sale",    f"₹{fmt_inr(int(top_store_sale))}", top_store_nm[:25], "🏆")
-        kpi(gp2, "Bottom Store Sale", f"₹{fmt_inr(int(bot_store_sale))}", bot_store_nm[:25], "⬇️")
+        kpi(gp2, "Bottom Store Sale", f"₹{int(bot_store_sale):,}" if bot_store_sale!=0 else "₹0", bot_store_nm[:25], "⬇️")
         kpi(gp3, "Performance Gap",   f"₹{fmt_inr(int(gap_val))}",        f"Top is {gap_ratio}x of bottom", "📊")
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1286,7 +1286,8 @@ if mode == "store" and st.session_state.store_data:
                 st.plotly_chart(fig_sz_ft, use_container_width=True)
 
         sec("🎨 Colour Preference")
-        col_fr = sale_s_cp.groupby('Color')['SaleQty'].sum().sort_values(ascending=False).head(10)
+        col_fr_raw = sale_s_cp.groupby('Color')['SaleQty'].sum().sort_values(ascending=False).head(10)
+        col_fr = col_fr_raw  # keep original values for display
         # Map colour names to actual colors
         COLOR_MAP = {
             'BLACK': '#1a1a1a', 'WHITE': '#f5f5f5', 'IVORY MIST': '#f5f0e0',
@@ -1313,14 +1314,16 @@ if mode == "store" and st.session_state.store_data:
             bar_colors.append(matched if matched else CAT_COLORS[len(bar_colors) % len(CAT_COLORS)])
         # White bars need border to be visible
         border_colors = ['#999999' if str(c).upper() in ['WHITE','OFF-WHITE','IVORY','IVORY MIST','CREAM','LIGHT GREY'] else 'rgba(0,0,0,0)' for c in col_fr.index]
+        col_total_fr = col_fr.sum()
+        col_pct_fr = [f"{v} pcs ({v/col_total_fr*100:.1f}%)" for v in col_fr.values]
         fig_col_fr = go.Figure(go.Bar(
             x=col_fr.index.tolist(), y=col_fr.values,
             marker=dict(color=bar_colors, line=dict(color=border_colors, width=1.5)),
-            text=[str(int(v)) for v in col_fr.values],
-            textposition='outside', textfont=dict(size=10,color='#1a0030')))
+            text=col_pct_fr,
+            textposition='outside', textfont=dict(size=9,color='#1a0030')))
         fig_col_fr.update_layout(**cl(320,"Top 10 Colours by Sale Qty",margin=dict(l=10,r=10,t=40,b=70)),
             bargap=0.3, xaxis_tickangle=-30,
-            yaxis_range=[0, col_fr.max()*1.3])
+            yaxis_range=[0, col_fr.max()*1.35])
         st.plotly_chart(fig_col_fr, use_container_width=True)
 
 
