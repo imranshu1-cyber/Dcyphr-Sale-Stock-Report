@@ -189,8 +189,8 @@ def process(file_bytes):
     for col in ['Sale Qty', 'NetSale', 'MRP Value', 'Discount Amount', 'MRP']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-    df['Distributor'] = df['Distributor'].astype(str).str.strip()
-    df['Store Name']  = df['Store Name'].astype(str).str.strip()
+    df['Distributor'] = df['Distributor'].astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
+    df['Store Name']  = df['Store Name'].astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
     df['Gender']      = df['Gender'].astype(str).str.upper().str.strip()
     df['Category']    = df['Category'].astype(str).str.upper().str.strip()
     df['Color']       = df['Color'].astype(str).str.upper().str.strip() if 'Color' in df.columns else 'N/A'
@@ -380,10 +380,10 @@ if mode == "store" and st.session_state.store_data:
     kpi(k5,"Top Store",        top_store_s[:20], f"₹{fmt_inr(int(sale_s.groupby('StoreName')['NetSale'].sum().max()))}", "🏆")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    st1,st2,st3,st4,st5,st6,st7,st8,st9,st10 = st.tabs([
+    st1,st2,st3,st4,st5,st6,st7,st8,st9,st10,st11 = st.tabs([
         "📈 Overview","🏪 Store-wise","🏷️ Article-wise",
         "🎨 Colour-wise","📐 Size-wise","👤 Gender+Category",
-        "🗓️ Season-wise","📊 Sale vs Stock","🏭 Warehouse Stock","📋 Export"
+        "🗓️ Season-wise","📊 Sale vs Stock","🏭 Warehouse Stock","📋 Export","🎯 Final Review"
     ])
 
     with st1:
@@ -896,6 +896,252 @@ if mode == "store" and st.session_state.store_data:
         prev_s = sale_s[['StoreName','Month','Category','SubCategory','Gender','Size','Color','Season','SaleQty','NetSale']].copy()
         prev_s.columns = ['Store','Month','Category','Sub Category','Gender','Size','Colour','Season','Sale Qty','Net Sale']
         st.dataframe(prev_s, use_container_width=True, hide_index=True)
+
+
+    with st11:
+        sec("🎯 Final Review — Store Business Summary")
+
+        # 1. TOP & BOTTOM STORES
+        st.markdown("### 🏆 Top & Bottom Performing Stores")
+        store_perf = sale_s.groupby('StoreName')['NetSale'].sum().reset_index().sort_values('NetSale', ascending=False)
+        store_perf['Sale'] = store_perf['NetSale'].apply(lambda x: fmt_inr(int(x)))
+        top5_perf = store_perf.head(5)
+        bot5_perf = store_perf.tail(5).sort_values('NetSale')
+
+        col_top, col_bot = st.columns(2)
+        with col_top:
+            sec("🟢 Top 5 Stores")
+            fig_top = go.Figure(go.Bar(
+                x=top5_perf['NetSale'].values,
+                y=[s[:25] for s in top5_perf['StoreName'].tolist()],
+                orientation='h',
+                marker=dict(color='#16a34a', line=dict(width=0)),
+                text=[f"₹{fmt_inr(int(v))}" for v in top5_perf['NetSale'].values],
+                textposition='outside', textfont=dict(size=10,color='#1a0030')))
+            fig_top.update_layout(**cl(280,"Top 5 Stores",margin=dict(l=10,r=160,t=40,b=20)),
+                xaxis_range=[0, top5_perf['NetSale'].max()*1.45])
+            st.plotly_chart(fig_top, use_container_width=True)
+        with col_bot:
+            sec("🔴 Bottom 5 Stores")
+            fig_bot = go.Figure(go.Bar(
+                x=bot5_perf['NetSale'].values,
+                y=[s[:25] for s in bot5_perf['StoreName'].tolist()],
+                orientation='h',
+                marker=dict(color='#dc2626', line=dict(width=0)),
+                text=[f"₹{fmt_inr(int(v))}" for v in bot5_perf['NetSale'].values],
+                textposition='outside', textfont=dict(size=10,color='#1a0030')))
+            fig_bot.update_layout(**cl(280,"Bottom 5 Stores",margin=dict(l=10,r=160,t=40,b=20)),
+                xaxis_range=[0, max(bot5_perf['NetSale'].max()*1.45,1)])
+            st.plotly_chart(fig_bot, use_container_width=True)
+
+        st.markdown("---")
+
+        # 2. TOP & BOTTOM STYLES
+        st.markdown("### 👕 Top & Bottom Performing Styles")
+        style_perf = sale_s.groupby(['ItemID','ItemName']).agg(
+            NetSale=('NetSale','sum'), Qty=('SaleQty','sum')
+        ).reset_index().sort_values('NetSale', ascending=False)
+        top5_style = style_perf.head(5)
+        bot5_style = style_perf.tail(5).sort_values('NetSale')
+
+        cs1, cs2 = st.columns(2)
+        with cs1:
+            sec("🟢 Top 5 Styles")
+            fig_ts = go.Figure(go.Bar(
+                x=top5_style['NetSale'].values,
+                y=[r.ItemName[:22] for r in top5_style.itertuples()],
+                orientation='h',
+                marker=dict(color='#16a34a', line=dict(width=0)),
+                text=[f"₹{fmt_inr(int(v))}" for v in top5_style['NetSale'].values],
+                textposition='outside', textfont=dict(size=10,color='#1a0030')))
+            fig_ts.update_layout(**cl(280,"Top 5 Styles",margin=dict(l=10,r=160,t=40,b=20)),
+                xaxis_range=[0, top5_style['NetSale'].max()*1.45])
+            st.plotly_chart(fig_ts, use_container_width=True)
+        with cs2:
+            sec("🔴 Bottom 5 Styles")
+            fig_bs = go.Figure(go.Bar(
+                x=bot5_style['NetSale'].values,
+                y=[r.ItemName[:22] for r in bot5_style.itertuples()],
+                orientation='h',
+                marker=dict(color='#dc2626', line=dict(width=0)),
+                text=[f"₹{fmt_inr(int(v))}" for v in bot5_style['NetSale'].values],
+                textposition='outside', textfont=dict(size=10,color='#1a0030')))
+            fig_bs.update_layout(**cl(280,"Bottom 5 Styles",margin=dict(l=10,r=160,t=40,b=20)),
+                xaxis_range=[0, max(bot5_style['NetSale'].max()*1.45,1)])
+            st.plotly_chart(fig_bs, use_container_width=True)
+
+        st.markdown("---")
+
+        # 3. TOTAL SALE ACROSS MONTHS
+        st.markdown("### 📅 Total Sale Across Months")
+        monthly_fr = sale_s.groupby('Month')['NetSale'].sum().reindex(MONTHS_S).fillna(0)
+        bi_fr = int(monthly_fr.values.argmax())
+        wi_fr = int(monthly_fr.values.argmin())
+        bcolors_fr = ['#9c27b0' if i not in [bi_fr,wi_fr] else ('#16a34a' if i==bi_fr else '#dc2626') for i in range(len(monthly_fr))]
+
+        fig_mfr = go.Figure()
+        fig_mfr.add_trace(go.Bar(
+            x=MONTHS_S, y=monthly_fr.values, name='Net Sale',
+            marker=dict(color=bcolors_fr, line=dict(width=0)),
+            text=[f"₹{fmt_inr(int(v))}" for v in monthly_fr.values],
+            textposition='outside', textfont=dict(size=10,color='#1a0030')))
+        fig_mfr.add_trace(go.Scatter(
+            x=MONTHS_S, y=monthly_fr.values, name='Trend',
+            mode='lines+markers', line=dict(color='#f59e0b', width=2.5, dash='dot'),
+            marker=dict(size=7, color='#f59e0b')))
+        fig_mfr.update_layout(**cl(340,"Monthly Net Sale — All Stores",margin=dict(l=10,r=10,t=55,b=40)),
+            bargap=0.3, yaxis_range=[0, monthly_fr.max()*1.3])
+        st.plotly_chart(fig_mfr, use_container_width=True)
+
+        mk1,mk2,mk3,mk4 = st.columns(4)
+        kpi(mk1,"Best Month", MONTHS_S[bi_fr], f"₹{fmt_inr(int(monthly_fr.values[bi_fr]))}", "🏆")
+        kpi(mk2,"Lowest Month", MONTHS_S[wi_fr], f"₹{fmt_inr(int(monthly_fr.values[wi_fr]))}", "⬇️")
+        avg_monthly = monthly_fr[monthly_fr>0].mean()
+        kpi(mk3,"Avg Monthly Sale", f"₹{fmt_inr(int(avg_monthly))}", "Per month avg", "📊")
+        mom_fr = monthly_fr.pct_change().dropna()
+        last_mom = float(mom_fr.values[-1])*100 if len(mom_fr)>0 else 0
+        kpi(mk4,"Last MoM Growth", f"{last_mom:+.1f}%", "vs previous month", "📈" if last_mom>=0 else "📉")
+
+        st.markdown("---")
+
+        # 4. HIGHLIGHTS & LOWLIGHTS
+        st.markdown("### 💡 Highlights & Lowlights")
+        hl1, hl2 = st.columns(2)
+
+        with hl1:
+            sec("✅ Highlights")
+            highlights = []
+            highlights.append(f"🏆 Best month: <b>{MONTHS_S[bi_fr]}</b> — ₹{fmt_inr(int(monthly_fr.values[bi_fr]))}")
+            top_store_name = store_perf.iloc[0]['StoreName']
+            top_store_sale = store_perf.iloc[0]['NetSale']
+            highlights.append(f"🏪 Top store: <b>{top_store_name[:30]}</b> — ₹{fmt_inr(int(top_store_sale))}")
+            if len(style_perf)>0:
+                highlights.append(f"👕 Top style: <b>{style_perf.iloc[0]['ItemName'][:30]}</b> — ₹{fmt_inr(int(style_perf.iloc[0]['NetSale']))}")
+            growth_months = [MONTHS_S[i+1] for i,v in enumerate(monthly_fr.pct_change().values[1:]) if v>0 and i+1<len(MONTHS_S)]
+            if growth_months:
+                highlights.append(f"📈 Growth months: <b>{', '.join(growth_months[:3])}</b>")
+            top_cat_s = sale_s.groupby('Category')['NetSale'].sum()
+            top_cat_s = top_cat_s[top_cat_s>0]
+            if len(top_cat_s)>0:
+                highlights.append(f"🗂️ Top category: <b>{top_cat_s.idxmax()}</b> — ₹{fmt_inr(int(top_cat_s.max()))}")
+            for h in highlights:
+                st.markdown(f'<div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:.6rem 1rem;margin-bottom:.5rem;border-radius:0 8px 8px 0"><span style="font-size:.85rem;color:#1a0030">{h}</span></div>', unsafe_allow_html=True)
+
+        with hl2:
+            sec("⚠️ Lowlights")
+            lowlights = []
+            lowlights.append(f"⬇️ Weakest month: <b>{MONTHS_S[wi_fr]}</b> — ₹{fmt_inr(int(monthly_fr.values[wi_fr]))}")
+            bot_store_name = store_perf.iloc[-1]['StoreName']
+            bot_store_sale = store_perf.iloc[-1]['NetSale']
+            lowlights.append(f"🏪 Lowest store: <b>{bot_store_name[:30]}</b> — ₹{fmt_inr(int(bot_store_sale))}")
+            if len(style_perf)>0:
+                lowlights.append(f"👕 Slowest style: <b>{style_perf.iloc[-1]['ItemName'][:30]}</b> — ₹{fmt_inr(int(style_perf.iloc[-1]['NetSale']))}")
+            decline_months = [MONTHS_S[i+1] for i,v in enumerate(monthly_fr.pct_change().values[1:]) if v<0 and i+1<len(MONTHS_S)]
+            if decline_months:
+                lowlights.append(f"📉 Decline months: <b>{', '.join(decline_months[:3])}</b>")
+            low_cont = store_perf[store_perf['NetSale'] < store_perf['NetSale'].sum()*0.01]
+            if len(low_cont)>0:
+                lowlights.append(f"⚠️ <b>{len(low_cont)} stores</b> contributing less than 1% of total sale")
+            for l in lowlights:
+                st.markdown(f'<div style="background:#fef2f2;border-left:4px solid #dc2626;padding:.6rem 1rem;margin-bottom:.5rem;border-radius:0 8px 8px 0"><span style="font-size:.85rem;color:#1a0030">{l}</span></div>', unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # 5. SELL THROUGH
+        st.markdown("### 🔄 Sell Through Analysis")
+        total_sale_fr = sale_s['NetSale'].sum()
+        total_stock_fr = stock_s['ClosingValue'].sum()
+        total_inv_fr = total_sale_fr + total_stock_fr
+        overall_st = round(total_sale_fr/total_inv_fr*100, 1) if total_inv_fr>0 else 0
+
+        st_k1, st_k2, st_k3 = st.columns(3)
+        kpi(st_k1,"Overall Sell Through", f"{overall_st}%",
+            "Good" if overall_st>=60 else ("Average" if overall_st>=30 else "Low"), "🔄")
+        kpi(st_k2,"Total Sale Value", f"₹{fmt_inr(int(total_sale_fr))}", "Net sale", "💰")
+        kpi(st_k3,"Closing Stock Value", f"₹{fmt_inr(int(total_stock_fr))}", "Unsold inventory", "📦")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        sec("🗓️ Season-wise Sell Through")
+        sea_sale_fr = sale_s.groupby('Season')['NetSale'].sum()
+        seasons_fr = sorted(sea_sale_fr.index.tolist())
+        sea_stk_fr = stock_s.groupby('Season')['ClosingValue'].sum() if 'Season' in stock_s.columns else pd.Series(dtype=float)
+        st_sea_data = []
+        for sea in seasons_fr:
+            sv = float(sea_sale_fr.get(sea, 0))
+            sk = float(sea_stk_fr.get(sea, 0)) if sea in sea_stk_fr.index else 0
+            tv = sv + sk
+            str_pct = round(sv/tv*100,1) if tv>0 else 0
+            status = "Good" if str_pct>=60 else ("Avg" if str_pct>=30 else "Low")
+            color = '#16a34a' if str_pct>=60 else ('#f59e0b' if str_pct>=30 else '#dc2626')
+            st_sea_data.append({'Season':sea,'ST':str_pct,'Sale':sv,'color':color,'Status':status})
+
+        if st_sea_data:
+            sea_cols_fr = st.columns(min(len(st_sea_data),5))
+            for i,row in enumerate(st_sea_data):
+                if i < len(sea_cols_fr):
+                    with sea_cols_fr[i]:
+                        st.markdown(
+                            '<div style="background:linear-gradient(135deg,' + row['color'] + ',#1a0030);border-radius:14px;padding:1rem 1.2rem;margin-bottom:.5rem">'
+                            '<div style="font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.75)">Season: ' + row['Season'] + '</div>'
+                            '<div style="font-size:1.3rem;font-weight:800;color:#fff">' + str(row['ST']) + '%</div>'
+                            '<div style="font-size:.72rem;color:rgba(255,255,255,.7)">Sale: ₹' + fmt_inr(int(row['Sale'])) + '</div>'
+                            '<div style="font-size:.65rem;color:rgba(255,255,255,.6)">' + row['Status'] + '</div>'
+                            '</div>',
+                            unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # 6. CUSTOMER PROFILING
+        st.markdown("### 👤 Customer Profiling & Demographics")
+        cp1, cp2 = st.columns(2)
+        with cp1:
+            sec("👤 Gender Split")
+            gen_fr = sale_s.groupby('Gender')['NetSale'].sum().sort_values(ascending=False)
+            gen_fr = gen_fr[gen_fr>0]
+            fig_gen_fr = go.Figure(go.Pie(
+                labels=gen_fr.index.tolist(), values=gen_fr.values.tolist(), hole=0.55,
+                marker=dict(colors=['#7b1fa2','#e91e63','#1565c0','#ff6f00'], line=dict(color='#fff',width=2)),
+                textinfo='label+percent', textfont=dict(size=12,color='#1a0030'),
+                insidetextfont=dict(size=10,color='#fff')))
+            fig_gen_fr.update_layout(**cl(280,"Gender-wise Sale",margin=dict(l=10,r=10,t=40,b=10)))
+            st.plotly_chart(fig_gen_fr, use_container_width=True)
+        with cp2:
+            sec("🗂️ Category Preference")
+            cat_fr = sale_s.groupby('Category')['NetSale'].sum().sort_values(ascending=False)
+            cat_fr = cat_fr[cat_fr>0]
+            fig_cat_fr = go.Figure(go.Pie(
+                labels=cat_fr.index.tolist(), values=cat_fr.values.tolist(), hole=0.55,
+                marker=dict(colors=CAT_COLORS[:len(cat_fr)], line=dict(color='#fff',width=2)),
+                textinfo='label+percent', textfont=dict(size=11,color='#1a0030'),
+                insidetextfont=dict(size=10,color='#fff')))
+            fig_cat_fr.update_layout(**cl(280,"Category Preference",margin=dict(l=10,r=10,t=40,b=10)))
+            st.plotly_chart(fig_cat_fr, use_container_width=True)
+
+        sec("📐 Size Preference (Buyer Profile)")
+        SIZE_ORDER_FR = ['XS','S','M','L','XL','XXL','XXXL','2XL','3XL','STANDARD']
+        all_sz_fr = sale_s['Size'].dropna().unique().tolist()
+        ord_sz_fr = [s for s in SIZE_ORDER_FR if s in all_sz_fr] + [s for s in all_sz_fr if s not in SIZE_ORDER_FR]
+        sz_qty_fr = sale_s.groupby('Size')['SaleQty'].sum().reindex(ord_sz_fr).fillna(0)
+        fig_sz_fr = go.Figure(go.Bar(
+            x=ord_sz_fr, y=sz_qty_fr.values,
+            marker=dict(color=sz_qty_fr.values, colorscale=BLUE_SEQ, line=dict(width=0)),
+            text=[str(int(v)) if v>0 else "" for v in sz_qty_fr.values],
+            textposition='outside', textfont=dict(size=11,color='#1a0030')))
+        fig_sz_fr.update_layout(**cl(280,"Size-wise Qty Sold",margin=dict(l=10,r=10,t=40,b=40)),
+            bargap=0.3, yaxis_range=[0, max(sz_qty_fr.max()*1.25,1)])
+        st.plotly_chart(fig_sz_fr, use_container_width=True)
+
+        sec("🎨 Colour Preference")
+        col_fr = sale_s.groupby('Color')['SaleQty'].sum().sort_values(ascending=False).head(10)
+        fig_col_fr = go.Figure(go.Bar(
+            x=col_fr.index.tolist(), y=col_fr.values,
+            marker=dict(color=CAT_COLORS[:len(col_fr)], line=dict(width=0)),
+            text=[str(int(v)) for v in col_fr.values],
+            textposition='outside', textfont=dict(size=10,color='#1a0030')))
+        fig_col_fr.update_layout(**cl(280,"Top 10 Colours by Qty",margin=dict(l=10,r=10,t=40,b=70)),
+            bargap=0.3, xaxis_tickangle=-30)
+        st.plotly_chart(fig_col_fr, use_container_width=True)
+
 
     st.stop()
 
