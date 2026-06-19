@@ -936,7 +936,7 @@ if mode == "store" and st.session_state.store_data:
                 text=bot_texts,
                 textposition='outside', textfont=dict(size=10,color='#1a0030')))
             fig_bot.update_layout(**cl(420,"Bottom 10 Stores",margin=dict(l=10,r=160,t=40,b=20)),
-                xaxis_range=[0, bot_abs_max*1.8])
+                xaxis_range=[0, bot_abs_max*2.2])
             st.plotly_chart(fig_bot, use_container_width=True)
 
         st.markdown("---")
@@ -1020,6 +1020,21 @@ if mode == "store" and st.session_state.store_data:
         last_mom = float(mom_fr.values[-1])*100 if len(mom_fr)>0 else 0
         kpi(mk4,"Last MoM Growth", f"{last_mom:+.1f}%", "vs previous month", "📈" if last_mom>=0 else "📉")
 
+        # MoM Growth Table
+        sec("📊 Month-on-Month Growth Table")
+        mom_vals = monthly_fr.pct_change()*100
+        mom_data = []
+        for i, m in enumerate(MONTHS_S):
+            sale_v = float(monthly_fr.values[i])
+            mom_v  = float(mom_vals.values[i]) if i>0 else None
+            mom_data.append({
+                'Month': m,
+                'Net Sale': f"₹{fmt_inr(int(sale_v))}",
+                'MoM Growth': f"{mom_v:+.1f}%" if mom_v is not None else "—",
+                'Status': ('🟢 Growth' if mom_v and mom_v>0 else ('🔴 Decline' if mom_v and mom_v<0 else '—'))
+            })
+        st.dataframe(pd.DataFrame(mom_data), use_container_width=True, hide_index=True)
+
         st.markdown("---")
 
         # 4. HIGHLIGHTS & LOWLIGHTS
@@ -1078,6 +1093,24 @@ if mode == "store" and st.session_state.store_data:
         kpi(st_k2,"Total Sale Value", f"₹{fmt_inr(int(total_sale_fr))}", "Net sale", "💰")
         kpi(st_k3,"Closing Stock Value", f"₹{fmt_inr(int(total_stock_fr))}", "Unsold inventory", "📦")
         st.markdown("<br>", unsafe_allow_html=True)
+        # Warning card if ST is low
+        if overall_st < 30:
+            st.markdown(f'''<div style="background:linear-gradient(135deg,#7f1d1d,#dc2626);border-radius:14px;
+                padding:1rem 1.4rem;margin-bottom:1rem;border-left:5px solid #fca5a5">
+                <div style="font-size:.75rem;font-weight:700;color:#fca5a5;letter-spacing:1px">⚠️ LOW SELL THROUGH ALERT</div>
+                <div style="font-size:.9rem;color:#fff;margin-top:.4rem">
+                Sell Through is only <b>{overall_st}%</b> — Closing stock ₹{fmt_inr(int(total_stock_fr))} 
+                is significantly high vs sale ₹{fmt_inr(int(total_sale_fr))}. 
+                Immediate action needed: markdowns, promotions or stock redistribution.</div>
+            </div>''', unsafe_allow_html=True)
+        elif overall_st < 60:
+            st.markdown(f'''<div style="background:linear-gradient(135deg,#78350f,#f59e0b);border-radius:14px;
+                padding:1rem 1.4rem;margin-bottom:1rem;border-left:5px solid #fde68a">
+                <div style="font-size:.75rem;font-weight:700;color:#fde68a;letter-spacing:1px">📊 AVERAGE SELL THROUGH</div>
+                <div style="font-size:.9rem;color:#fff;margin-top:.4rem">
+                Sell Through is <b>{overall_st}%</b> — Room for improvement. 
+                Stock ₹{fmt_inr(int(total_stock_fr))} needs better offtake through targeted promotions.</div>
+            </div>''', unsafe_allow_html=True)
 
         sec("🗓️ Season-wise Sell Through")
         sea_sale_fr = sale_s.groupby('Season')['NetSale'].sum()
@@ -1119,7 +1152,54 @@ if mode == "store" and st.session_state.store_data:
                             '</div>',
                             unsafe_allow_html=True)
         else:
-            st.info("No matching seasons found between sale and stock data.")
+            st.info("Season-wise Sell Through not available — sale and stock seasons do not match.")
+
+        # Store-wise Sell Through Table
+        sec("🏪 Store-wise Sell Through")
+        store_sale_st = sale_s.groupby('StoreName')['NetSale'].sum()
+        store_stk_st  = stock_s.groupby('StoreName')['ClosingValue'].sum() if 'ClosingValue' in stock_s.columns else pd.Series(dtype=float)
+        store_st_data = []
+        for s in sorted(set(store_sale_st.index) | set(store_stk_st.index)):
+            sv = float(store_sale_st.get(s, 0))
+            sk = float(store_stk_st.get(s, 0)) if s in store_stk_st.index else 0
+            tv = sv + sk
+            st_pct = round(sv/tv*100,1) if tv>0 and sv>0 else 0
+            store_st_data.append({
+                'Store': s[:35],
+                'Net Sale': f"₹{fmt_inr(int(sv))}",
+                'Closing Stock': f"₹{fmt_inr(int(sk))}",
+                'ST%': f"{st_pct}%",
+                'Status': '🟢 Good' if st_pct>=60 else ('🟡 Avg' if st_pct>=30 else '🔴 Low')
+            })
+        store_st_df = pd.DataFrame(store_st_data).sort_values('ST%', ascending=False)
+        st.dataframe(store_st_df, use_container_width=True, hide_index=True)
+
+        # Top vs Bottom Gap
+        sec("📊 Top vs Bottom Store Gap")
+        top_store_sale = float(store_perf.iloc[0]['NetSale'])
+        bot_store_sale = float(store_perf.iloc[-1]['NetSale'])
+        top_store_nm   = store_perf.iloc[0]['StoreName']
+        bot_store_nm   = store_perf.iloc[-1]['StoreName']
+        gap_val = top_store_sale - bot_store_sale
+        gap_ratio = round(top_store_sale / abs(bot_store_sale), 1) if bot_store_sale != 0 else 0
+
+        gp1, gp2, gp3 = st.columns(3)
+        kpi(gp1, "Top Store Sale",    f"₹{fmt_inr(int(top_store_sale))}", top_store_nm[:25], "🏆")
+        kpi(gp2, "Bottom Store Sale", f"₹{fmt_inr(int(bot_store_sale))}", bot_store_nm[:25], "⬇️")
+        kpi(gp3, "Performance Gap",   f"₹{fmt_inr(int(gap_val))}",        f"Top is {gap_ratio}x of bottom", "📊")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        fig_gap = go.Figure()
+        fig_gap.add_trace(go.Bar(
+            name='Net Sale',
+            x=[top_store_nm[:25], bot_store_nm[:25]],
+            y=[top_store_sale, max(bot_store_sale,0)],
+            marker=dict(color=['#16a34a','#dc2626'], line=dict(width=0)),
+            text=[f"₹{fmt_inr(int(top_store_sale))}", f"₹{fmt_inr(int(bot_store_sale))}"],
+            textposition='outside', textfont=dict(size=12,color='#1a0030')))
+        fig_gap.update_layout(**cl(280,"Top vs Bottom Store Comparison",margin=dict(l=10,r=10,t=55,b=80)),
+            bargap=0.5, yaxis_range=[0, top_store_sale*1.3])
+        st.plotly_chart(fig_gap, use_container_width=True)
 
         st.markdown("---")
 
@@ -1225,8 +1305,10 @@ if mode == "store" and st.session_state.store_data:
             marker=dict(color=bar_colors, line=dict(color=border_colors, width=1.5)),
             text=[str(int(v)) for v in col_fr.values],
             textposition='outside', textfont=dict(size=10,color='#1a0030')))
-        fig_col_fr.update_layout(**cl(300,"Top 10 Colours by Sale Qty",margin=dict(l=10,r=10,t=40,b=70)),
-            bargap=0.3, xaxis_tickangle=-30, yaxis_range=[0, col_fr.max()*1.25])
+        fig_col_fr.update_layout(**cl(320,"Top 10 Colours by Sale Qty",margin=dict(l=10,r=10,t=40,b=70)),
+            bargap=0.3, xaxis_tickangle=-30,
+            yaxis=dict(gridcolor="#ede9fe", tickfont=dict(color="#1a0030", size=11),
+                      linecolor="#ddd6fe", showgrid=True, type='linear'))
         st.plotly_chart(fig_col_fr, use_container_width=True)
 
 
