@@ -1307,8 +1307,7 @@ if mode == "store" and st.session_state.store_data:
             textposition='outside', textfont=dict(size=10,color='#1a0030')))
         fig_col_fr.update_layout(**cl(320,"Top 10 Colours by Sale Qty",margin=dict(l=10,r=10,t=40,b=70)),
             bargap=0.3, xaxis_tickangle=-30,
-            yaxis=dict(gridcolor="#ede9fe", tickfont=dict(color="#1a0030", size=11),
-                      linecolor="#ddd6fe", showgrid=True, type='linear'))
+            yaxis_range=[0, col_fr.max()*1.3])
         st.plotly_chart(fig_col_fr, use_container_width=True)
 
 
