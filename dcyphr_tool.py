@@ -1081,31 +1081,45 @@ if mode == "store" and st.session_state.store_data:
 
         sec("🗓️ Season-wise Sell Through")
         sea_sale_fr = sale_s.groupby('Season')['NetSale'].sum()
-        seasons_fr = sorted(sea_sale_fr.index.tolist())
-        sea_stk_fr = stock_s.groupby('Season')['ClosingValue'].sum() if 'Season' in stock_s.columns else pd.Series(dtype=float)
+        sea_stk_fr  = stock_s.groupby('Season')['ClosingValue'].sum() if 'Season' in stock_s.columns else pd.Series(dtype=float)
+        # Only show seasons present in BOTH sale and stock
+        common_seasons = sorted(set(sea_sale_fr.index) & set(sea_stk_fr.index))
         st_sea_data = []
-        for sea in seasons_fr:
+        for sea in common_seasons:
             sv = float(sea_sale_fr.get(sea, 0))
-            sk = float(sea_stk_fr.get(sea, 0)) if sea in sea_stk_fr.index else 0
+            sk = float(sea_stk_fr.get(sea, 0))
             tv = sv + sk
-            str_pct = round(sv/tv*100,1) if tv>0 else 0
-            status = "Good" if str_pct>=60 else ("Avg" if str_pct>=30 else "Low")
-            color = '#16a34a' if str_pct>=60 else ('#f59e0b' if str_pct>=30 else '#dc2626')
-            st_sea_data.append({'Season':sea,'ST':str_pct,'Sale':sv,'color':color,'Status':status})
+            if tv <= 0 or sv < 0:
+                str_pct = None  # N/A for negative or zero
+            else:
+                str_pct = round(sv/tv*100, 1)
+            if str_pct is None:
+                status = "N/A"
+                color = '#6b7280'
+                display = "N/A"
+            elif str_pct >= 60:
+                status = "Good"; color = '#16a34a'; display = f"{str_pct}%"
+            elif str_pct >= 30:
+                status = "Avg"; color = '#f59e0b'; display = f"{str_pct}%"
+            else:
+                status = "Low"; color = '#dc2626'; display = f"{str_pct}%"
+            st_sea_data.append({'Season':sea,'display':display,'Sale':sv,'Stock':sk,'color':color,'Status':status})
 
         if st_sea_data:
-            sea_cols_fr = st.columns(min(len(st_sea_data),5))
-            for i,row in enumerate(st_sea_data):
+            sea_cols_fr = st.columns(min(len(st_sea_data), 5))
+            for i, row in enumerate(st_sea_data):
                 if i < len(sea_cols_fr):
                     with sea_cols_fr[i]:
                         st.markdown(
                             '<div style="background:linear-gradient(135deg,' + row['color'] + ',#1a0030);border-radius:14px;padding:1rem 1.2rem;margin-bottom:.5rem">'
-                            '<div style="font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.75)">Season: ' + row['Season'] + '</div>'
-                            '<div style="font-size:1.3rem;font-weight:800;color:#fff">' + str(row['ST']) + '%</div>'
+                            '<div style="font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.75)">🗓️ ' + row['Season'] + '</div>'
+                            '<div style="font-size:1.3rem;font-weight:800;color:#fff">' + row['display'] + '</div>'
                             '<div style="font-size:.72rem;color:rgba(255,255,255,.7)">Sale: ₹' + fmt_inr(int(row['Sale'])) + '</div>'
-                            '<div style="font-size:.65rem;color:rgba(255,255,255,.6)">' + row['Status'] + '</div>'
+                            '<div style="font-size:.65rem;color:rgba(255,255,255,.6)">Stock: ₹' + fmt_inr(int(row['Stock'])) + ' · ' + row['Status'] + '</div>'
                             '</div>',
                             unsafe_allow_html=True)
+        else:
+            st.info("No matching seasons found between sale and stock data.")
 
         st.markdown("---")
 
