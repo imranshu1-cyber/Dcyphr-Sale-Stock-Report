@@ -1159,8 +1159,12 @@ if mode == "store" and st.session_state.store_data:
         # Store-wise Sell Through Table
         sec("🏪 Store-wise Sell Through")
         store_sale_st = sale_s.groupby('StoreName')['NetSale'].sum()
-        store_stk_st  = stock_s.groupby('StoreName')['ClosingValue'].sum() if 'ClosingValue' in stock_s.columns else pd.Series(dtype=float)
-        def safe_inr(v):
+        # ClosingValue comes from 'Clsoing Value' Excel typo — renamed in process_store
+        try:
+            store_stk_st = stock_s.groupby('StoreName')['ClosingValue'].sum()
+        except Exception:
+            store_stk_st = pd.Series(dtype=float)
+        def safe_inr_st(v):
             if v == 0: return "₹0"
             if v < 0: return f"-₹{fmt_inr(int(abs(v)))}"
             return f"₹{fmt_inr(int(v))}"
@@ -1182,8 +1186,8 @@ if mode == "store" and st.session_state.store_data:
                 status_str = "⚪ N/A"
             store_st_data.append({
                 'Store': s[:35],
-                'Net Sale': safe_inr(sv),
-                'Closing Stock': safe_inr(sk),
+                'Net Sale': safe_inr_st(sv),
+                'Closing Stock': safe_inr_st(sk),
                 'ST%': st_pct_str,
                 'Status': status_str
             })
