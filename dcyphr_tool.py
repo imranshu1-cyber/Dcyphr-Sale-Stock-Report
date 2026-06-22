@@ -240,6 +240,11 @@ def process_store(file_bytes):
     sale['StoreName'] = sale['StoreName'].astype(str).str.strip()
     sale['Gender']    = sale['Gender'].astype(str).str.upper().str.strip()
     sale['Category']  = sale['Category'].astype(str).str.upper().str.strip()
+    # Merge ACTIVE WEAR → ACTIVEWEAR globally
+    sale['Category']  = sale['Category'].str.replace('  ', ' ')
+    sale['Category']  = sale['Category'].replace({'ACTIVE WEAR': 'ACTIVEWEAR'})
+    # Remove negative/zero sale rows (returns/adjustments) from analysis
+    sale = sale[sale['NetSale'] > 0].copy()
     sale['Season']    = sale['Season'].astype(str).str.strip()
     sale['Color']     = sale['Color'].astype(str).str.upper().str.strip()
     sale['Size']      = sale['Size'].astype(str).str.upper().str.strip()
@@ -1233,7 +1238,7 @@ if mode == "store" and st.session_state.store_data:
         st.markdown("### 👤 Customer Profiling & Demographics")
         # Merge ACTIVEWEAR / ACTIVE WEAR duplicates
         sale_s_cp = sale_s.copy()
-        sale_s_cp['Category'] = sale_s_cp['Category'].str.strip().str.replace(r'\s+', ' ', regex=True).str.upper()
+    sale['Category']  = sale['Category'].str.replace('  ', ' ')
         sale_s_cp['Category'] = sale_s_cp['Category'].replace({'ACTIVE WEAR': 'ACTIVEWEAR'})
         cp1, cp2 = st.columns(2)
         with cp1:
