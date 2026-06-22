@@ -1238,7 +1238,7 @@ if mode == "store" and st.session_state.store_data:
         st.markdown("### 👤 Customer Profiling & Demographics")
         # Merge ACTIVEWEAR / ACTIVE WEAR duplicates
         sale_s_cp = sale_s.copy()
-    sale['Category']  = sale['Category'].str.replace('  ', ' ')
+        sale['Category']  = sale['Category'].str.replace('  ', ' ')
         sale_s_cp['Category'] = sale_s_cp['Category'].replace({'ACTIVE WEAR': 'ACTIVEWEAR'})
         cp1, cp2 = st.columns(2)
         with cp1:
